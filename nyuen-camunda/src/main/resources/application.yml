@@ -1,0 +1,66 @@
+server:
+  port: 8009
+
+spring:
+  profiles:
+    active: test
+
+  application:
+    name: nyuen-camunda
+
+  datasource:
+    # 数据库驱动
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # Druid连接池配置
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      initial-size: 10     # 初始化
+      min-idle: 8     # 最小
+      max-active: 20     # 最大
+      #max-wait: 60000  # 最大连接等待超时时间
+      max-idle: 8  #最大空闲数
+      test-on-borrow: false #请求连接时是否校验,比较消耗性能,一般设置false
+      test-on-return: false #归还连接时是否校验,比较消耗性能,一般设置false
+      test-while-idle: true #清理线程通过validation-query来校验连接是否正常,如果不正常将从连接池中移除
+      pool-prepared-statements: true #存储相同逻辑的sql到连接池的缓存中
+      #配置监控统计拦截的filters，stat:监控统计、wall：防御sql注入、log4j：日志记录
+      #如果允许时报错  java.lang.ClassNotFoundException: org.apache.log4j.Priority
+      #则导入 log4j 依赖即可，Maven 地址： https://mvnrepository.com/artifact/log4j/log4j
+      filters: stat,wall,log4j
+      max-pool-prepared-statement-per-connection-size: 20
+      use-global-data-source-stat: true
+      connection-properties: druid.stat.mergeSql=true;druid.stat.slowSqlMillis=500
+
+    jackson:
+      default-property-inclusion: ALWAYS
+      time-zone: GMT+8
+      date-format: yyyy-MM-dd HH:mm:ss
+
+  admin-user:
+    id: admin
+    password: admin
+  #禁用 遥测报告（Telemetry）
+  generic-properties:
+    properties:
+      telemetry-reporter-activate: false
+      #修改资源定义规则
+      generalResourceWhitelistPattern: "[a-zA-Z0-9-_]+"
+  filter:
+    create: All tasks
+  #禁止自动部署resources下面的bpmn文件
+  auto-deployment-enabled: false
+  #禁止index跳转到Camunda自带的管理界面，默认true
+  #webapp:
+  #index-redirect-enabled: false
+  #历史日志记录级别 默认值full
+  #history-level: full
+
+mybatis:
+  typeAliasesPackage: com.nyuen.camunda.domain.po
+  mapperLocations: classpath:mapper/*.xml
+
+#打印sql到控制台，方便调试
+logging:
+  level:
+    org.camunda: debug
+

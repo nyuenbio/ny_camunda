@@ -1,0 +1,34 @@
+server:
+  port: 8009
+
+spring:
+  datasource:
+    url: jdbc:mysql://system.nyuen-group.com:3306/ims_camunda?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=GMT%2B8
+    username: admin
+    password: Nyuen@2018
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://report.nyuen-group.com:8001/eureka/ #把服务注册到eureka注册中心
+  instance:
+    hostname: report.nyuen-group.com  #eureka客户端主机实例名称
+    prefer-ip-address: true #显示IP
+    appname: nyuen-camunda  #客户端服务名
+    instance-id: nyuen-camunda:8009 #客户端实例名称
+
+#是否开启swagger
+swagger:
+  enabled: true
+  base-package: com.nyuen.camunda.controller
+
+#打印sql到日志文件，方便查询
+mybatis:
+  configuration:
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  #log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+logging:
+  level:
+    com.nyuen.camunda.mappper: debug
+    org.camunda: debug
+
