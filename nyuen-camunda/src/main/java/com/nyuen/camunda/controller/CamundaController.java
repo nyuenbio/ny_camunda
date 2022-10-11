@@ -286,6 +286,20 @@ public class CamundaController {
         result.put("count",count);
         return result;
     }
+    @ApiOperation(value = "我发起的流程new", httpMethod = "POST")
+    @PostMapping("/checkByInitiatorNew")
+    public Result checkByInitiatorNew(@RequestBody SimpleQueryBean sqBean) {
+        List<HistoricProcessInstance> hiList2 = historyService.createHistoricProcessInstanceQuery()
+                .startedBy(sqBean.getAssignee())
+                .listPage((sqBean.getCurrentPage()-1)*sqBean.getPageSize(),sqBean.getPageSize());
+        long count = historyService.createHistoricProcessInstanceQuery().startedBy(sqBean.getAssignee()).count();
+        String hiList = JSONArray.toJSONString(hiList2,SerializerFeature.IgnoreErrorGetter);
+
+        Map<String,Object> result = new HashMap<>();
+        result.put("rows", JSONArray.parseArray(hiList));
+        result.put("total",count);
+        return ResultFactory.buildSuccessResult(result);
+    }
 
     //5、我的待办流程
     @ApiOperation(value = "我的待办流程",httpMethod = "GET")
@@ -348,7 +362,6 @@ public class CamundaController {
         Map<String,Object> result = new HashMap<>();
         result.put("taskList", taskList);
         result.put("total",count);
-
         return result;
     }
     @ApiOperation(value = "我的已办流程new",httpMethod = "POST")
