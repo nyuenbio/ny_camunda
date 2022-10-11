@@ -1,12 +1,17 @@
 package com.nyuen.camunda.controller;
 
+
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.SerializerFeature;
+import com.nyuen.camunda.common.PageBean;
+import com.nyuen.camunda.domain.vo.SimpleQueryBean;
 import com.nyuen.camunda.domain.vo.TodoTask;
 import com.nyuen.camunda.result.Result;
 import com.nyuen.camunda.result.ResultFactory;
 import com.nyuen.camunda.service.MyTaskService;
+import com.nyuen.camunda.utils.ObjectUtil;
+import com.nyuen.camunda.utils.PageConvert;
 import com.nyuen.camunda.vo.*;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
@@ -24,6 +29,8 @@ import org.camunda.bpm.engine.repository.DeploymentBuilder;
 import org.camunda.bpm.engine.repository.ProcessDefinition;
 import org.camunda.bpm.engine.task.Task;
 import org.camunda.commons.utils.IoUtil;
+import org.springframework.util.AntPathMatcher;
+import org.springframework.util.PathMatcher;
 import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
 
@@ -31,6 +38,7 @@ import springfox.documentation.annotations.ApiIgnore;
 import javax.annotation.Resource;
 import java.io.*;
 import java.util.*;
+
 
 /**
  * Demo Controller
@@ -292,13 +300,32 @@ public class CamundaController {
         String result = JSONArray.toJSONString(taskList,SerializerFeature.IgnoreErrorGetter);
         return result;
     }
-    @ApiOperation(value = "我的待办流程new",httpMethod = "GET")
-    @GetMapping("/getTodoList2")
-    public String getTodoList2(@RequestParam("userId") String userId) {
-        Map<String,Object> params = new HashMap<>();
-        params.put("assignee",userId);
-        List<TodoTask> todoTaskList= myTaskService.getTodoTaskList(params);
-        return JSONArray.toJSONString(todoTaskList);
+    @ApiOperation(value = "我的待办流程new",httpMethod = "POST")
+    @PostMapping("/getTodoListNew")
+    public Result getTodoListNew(@RequestBody SimpleQueryBean sqBean) throws IllegalAccessException {
+        Map<String,Object> params = ObjectUtil.objectToMap(sqBean);
+        PageConvert.currentPageConvertStartIndex(params);
+        PageBean pageBean = myTaskService.getTodoTaskList(params);
+        return ResultFactory.buildSuccessResult(pageBean);
+    }
+    @ApiOperation(value = "流程统计",httpMethod = "GET")
+    @GetMapping("/getProcessStatistics")
+    public Result getProcessStatistics(@RequestParam("userId") String userId) {
+        Map<String,Object> result = new HashMap<>();
+        long myTodo = taskService.createTaskQuery()
+                .taskAssignee(userId)
+                .count();
+        long myHistory = historyService.createHistoricTaskInstanceQuery()
+                .taskAssignee(userId)
+                .finished()
+                .count();
+        long myInitiator = historyService.createHistoricProcessInstanceQuery()
+                .startedBy(userId)
+                .count();
+        result.put("myTodo",myTodo);
+        result.put("myHistory", myHistory);
+        result.put("myInitiator", myInitiator);
+        return ResultFactory.buildSuccessResult(result);
     }
 
     //6、我的已办流程
@@ -316,6 +343,7 @@ public class CamundaController {
                 .taskAssignee(userId)
                 .finished()
                 .count();
+
         String taskList = JSONArray.toJSONString(tasks,SerializerFeature.IgnoreErrorGetter);
         Map<String,Object> result = new HashMap<>();
         result.put("taskList", taskList);
@@ -323,6 +351,15 @@ public class CamundaController {
 
         return result;
     }
+    @ApiOperation(value = "我的已办流程new",httpMethod = "POST")
+    @PostMapping("/getHistoryListNew")
+    public Result getHistoryListNew(@RequestBody SimpleQueryBean sqBean) throws IllegalAccessException {
+        Map<String,Object> params = ObjectUtil.objectToMap(sqBean);
+        PageConvert.currentPageConvertStartIndex(params);
+        PageBean pageBean = myTaskService.getHistoryTaskList(params);
+        return ResultFactory.buildSuccessResult(pageBean);
+    }
+
 
     //7、流程模板
     @ApiOperation(value = "获取流程模板",httpMethod = "GET")
@@ -552,5 +589,8 @@ public class CamundaController {
 
 
     }
+
+
+
 
 }

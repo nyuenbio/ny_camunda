@@ -360,6 +360,15 @@
     ORDER BY
         RES.CREATE_TIME_ DESC
   </select>
+  <select id="getTodoTaskTotal" parameterType="java.util.HashMap" resultType="java.lang.Integer">
+    SELECT count(DISTINCT RES.ID_)
+    FROM
+        ACT_RU_TASK RES
+        LEFT JOIN act_hi_procinst HIP on RES.PROC_INST_ID_ = HIP.PROC_INST_ID_
+        LEFT JOIN act_re_procdef DEF on RES.PROC_DEF_ID_ = DEF.ID_
+    WHERE
+        RES.ASSIGNEE_ = #{assignee,jdbcType=VARCHAR}
+  </select>
 
 
 </mapper>
