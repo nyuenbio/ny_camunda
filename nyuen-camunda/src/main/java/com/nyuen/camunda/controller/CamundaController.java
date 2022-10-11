@@ -146,7 +146,7 @@ public class CamundaController {
 
     @ApiOperation(value = "根据processInstanceId获取流程变量",httpMethod = "GET")
     @GetMapping("/getProcessVariable")
-    public String getProcessVariable(@RequestParam("processInstanceId") String processInstanceId) {
+    public Result getProcessVariable(@RequestParam("processInstanceId") String processInstanceId) {
         //不适用于已办节点
         //Object obj = formService.getRenderedTaskForm(taskId);
         //不适用于已办节点
@@ -158,7 +158,7 @@ public class CamundaController {
         List<HistoricVariableInstance> hviList2 = historyService.createHistoricVariableInstanceQuery()
                 .processInstanceIdIn(processInstanceId)
                 .listPage(0,10);
-        return JSONArray.toJSONString(hviList2,SerializerFeature.IgnoreErrorGetter);
+        return ResultFactory.buildSuccessResult(JSONArray.toJSONString(hviList2,SerializerFeature.IgnoreErrorGetter));
     }
 
     /**
@@ -226,18 +226,18 @@ public class CamundaController {
     //2、开启流程
     @ApiOperation(value = "开启流程",httpMethod = "POST")
     @PostMapping("/startProcess")
-    public String startProcess(@RequestBody StartProcessBean startProcessBean){
+    public Result startProcess(@RequestBody StartProcessBean startProcessBean){
         identityService.setAuthenticatedUserId(startProcessBean.getInitiator());
         runtimeService.startProcessInstanceById(startProcessBean.getProcessDefinitionId(),
                 startProcessBean.getBusinessKey(),startProcessBean.getVariables());
 
-        return null;
+        return ResultFactory.buildSuccessResult(null);
     }
 
     //3、处理流程节点
     @ApiOperation(value = "处理流程节点(带全局变量的节点)",httpMethod = "POST")
     @PostMapping("/dealTask")
-    public String dealTask(@RequestBody DealTaskBean dealTaskBean){
+    public Result dealTask(@RequestBody DealTaskBean dealTaskBean){
         //添加审批人
         processEngine.getIdentityService().setAuthenticatedUserId(dealTaskBean.getAssignee());
         //添加审批意见，可在Act_Hi_Comment里的message查询到
@@ -254,11 +254,11 @@ public class CamundaController {
         //任务完成,也就是审批通过
         taskService.complete(dealTaskBean.getTaskId());
 
-        return "";
+        return ResultFactory.buildSuccessResult(null);
     }
     @ApiOperation(value = "处理流程节点(带局部变量的节点)",httpMethod = "POST")
     @PostMapping("/dealTaskLocal")
-    public String dealTaskLocal(@RequestBody DealTaskBean dealTaskBean){
+    public Result dealTaskLocal(@RequestBody DealTaskBean dealTaskBean){
         //添加审批人
         processEngine.getIdentityService().setAuthenticatedUserId(dealTaskBean.getAssignee());
         //添加审批意见，可在Act_Hi_Comment里的message查询到
@@ -271,7 +271,7 @@ public class CamundaController {
         }
         //taskService.setVariableLocal(dealTaskBean.getTaskId(),"变量二","200");
         taskService.complete(dealTaskBean.getTaskId());
-        return "";
+        return ResultFactory.buildSuccessResult(null);
     }
 
     //4、我发起的流程
