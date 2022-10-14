@@ -22,7 +22,7 @@ public class DealTaskBean {
     @NotEmpty
     private String taskId;
     @NotEmpty
-    private String processInstanceId;
+    private String procInstId;
 //    private String activityInstanceId;
 //    private String executionId;
 

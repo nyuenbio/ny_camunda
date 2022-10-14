@@ -383,13 +383,13 @@
   <!--自定义部分-->
   <resultMap id="HistoryTaskMap" type="com.nyuen.camunda.domain.vo.HistoryTask" extends="BaseResultMap">
     <result column="BUSINESS_KEY_" jdbcType="VARCHAR" property="businessKey" />
-    <result column="defName" jdbcType="VARCHAR" property="defName" />
+    <result column="procDefName" jdbcType="VARCHAR" property="procDefName" />
   </resultMap>
 
   <select id="getHistoryTaskList" parameterType="java.util.HashMap" resultMap="HistoryTaskMap">
     SELECT DISTINCT
         HIP.BUSINESS_KEY_,
-        def.NAME_ as defName,
+        def.NAME_ as procDefName,
         RES.*
     FROM
         ACT_HI_TASKINST RES

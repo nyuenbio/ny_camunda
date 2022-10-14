@@ -15,7 +15,7 @@ import java.util.Date;
 @Data
 public class HistoryTask implements Serializable {
     private String businessKey;
-    private String defName;
+    private String procDefName;
 
     private String id;
 

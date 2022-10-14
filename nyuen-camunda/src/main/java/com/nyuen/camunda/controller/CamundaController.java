@@ -6,7 +6,6 @@ import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.nyuen.camunda.common.PageBean;
 import com.nyuen.camunda.domain.vo.SimpleQueryBean;
-import com.nyuen.camunda.domain.vo.TodoTask;
 import com.nyuen.camunda.result.Result;
 import com.nyuen.camunda.result.ResultFactory;
 import com.nyuen.camunda.service.MyTaskService;
@@ -15,6 +14,7 @@ import com.nyuen.camunda.utils.PageConvert;
 import com.nyuen.camunda.vo.*;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
+import io.swagger.models.auth.In;
 import org.camunda.bpm.engine.*;
 import org.camunda.bpm.engine.form.TaskFormData;
 import org.camunda.bpm.engine.history.*;
@@ -29,8 +29,6 @@ import org.camunda.bpm.engine.repository.DeploymentBuilder;
 import org.camunda.bpm.engine.repository.ProcessDefinition;
 import org.camunda.bpm.engine.task.Task;
 import org.camunda.commons.utils.IoUtil;
-import org.springframework.util.AntPathMatcher;
-import org.springframework.util.PathMatcher;
 import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
 
@@ -146,17 +144,17 @@ public class CamundaController {
 
     @ApiOperation(value = "根据processInstanceId获取流程变量",httpMethod = "GET")
     @GetMapping("/getProcessVariable")
-    public Result getProcessVariable(@RequestParam("processInstanceId") String processInstanceId) {
+    public Result getProcessVariable(@RequestParam("procInstId") String procInstId) {
         //不适用于已办节点
         //Object obj = formService.getRenderedTaskForm(taskId);
         //不适用于已办节点
         //TaskFormData tfData = formService.getTaskFormData(taskId);
         List<HistoricVariableInstance> hviList = historyService.createHistoricVariableInstanceQuery()
-                .processInstanceId(processInstanceId)
+                .processInstanceId(procInstId)
                 .list();
         // todo 不适用于待办节点
         List<HistoricVariableInstance> hviList2 = historyService.createHistoricVariableInstanceQuery()
-                .processInstanceIdIn(processInstanceId)
+                .processInstanceIdIn(procInstId)
                 .listPage(0,10);
         return ResultFactory.buildSuccessResult(JSONArray.toJSONString(hviList2,SerializerFeature.IgnoreErrorGetter));
     }
@@ -181,14 +179,14 @@ public class CamundaController {
 
     @ApiOperation(value = "获取所有已部署的form列表",httpMethod = "GET")
     @GetMapping("/getDeployFormList")
-    public String getDeployFormList() {
+    public Result getDeployFormList() {
         List<Deployment> deployFormList=repositoryService.createDeploymentQuery()
                 .deploymentNameLike("%\\_form")
                 .orderByDeploymentTime()
                 .desc()
                 .list();
 
-        return JSONArray.toJSONString(deployFormList, SerializerFeature.IgnoreErrorGetter);
+        return ResultFactory.buildSuccessResult(JSONArray.toJSONString(deployFormList, SerializerFeature.IgnoreErrorGetter));
     }
     @ApiOperation(value = "获取已部署的form内容",httpMethod = "GET")
     @GetMapping("/getDeployForm")
@@ -201,6 +199,7 @@ public class CamundaController {
         while ((rc = is.read(buff, 0, 1024)) > 0) {
             swapStream.write(buff, 0, rc);
         }
+
         return swapStream.toByteArray();
     }
     @GetMapping("/getDeployForm2")
@@ -228,7 +227,7 @@ public class CamundaController {
     @PostMapping("/startProcess")
     public Result startProcess(@RequestBody StartProcessBean startProcessBean){
         identityService.setAuthenticatedUserId(startProcessBean.getInitiator());
-        runtimeService.startProcessInstanceById(startProcessBean.getProcessDefinitionId(),
+        runtimeService.startProcessInstanceById(startProcessBean.getProcDefId(),
                 startProcessBean.getBusinessKey(),startProcessBean.getVariables());
 
         return ResultFactory.buildSuccessResult(null);
@@ -243,7 +242,7 @@ public class CamundaController {
         //添加审批意见，可在Act_Hi_Comment里的message查询到
         //三个参数分别为待办任务ID,流程实例ID,审批意见
         if(null != dealTaskBean.getComment()) {
-            taskService.createComment(dealTaskBean.getTaskId(), dealTaskBean.getProcessInstanceId(), dealTaskBean.getComment());
+            taskService.createComment(dealTaskBean.getTaskId(), dealTaskBean.getProcInstId(), dealTaskBean.getComment());
         }
         //处理节点变量
         if(null != dealTaskBean.getVariables()) {
@@ -264,7 +263,7 @@ public class CamundaController {
         //添加审批意见，可在Act_Hi_Comment里的message查询到
         //三个参数分别为待办任务ID,流程实例ID,审批意见
         if(null != dealTaskBean.getComment()) {
-            taskService.createComment(dealTaskBean.getTaskId(), dealTaskBean.getProcessInstanceId(), dealTaskBean.getComment());
+            taskService.createComment(dealTaskBean.getTaskId(), dealTaskBean.getProcInstId(), dealTaskBean.getComment());
         }
         if(null != dealTaskBean.getVariables()) {
             taskService.setVariablesLocal(dealTaskBean.getTaskId(), dealTaskBean.getVariables());
@@ -291,6 +290,8 @@ public class CamundaController {
     public Result checkByInitiatorNew(@RequestBody SimpleQueryBean sqBean) {
         List<HistoricProcessInstance> hiList2 = historyService.createHistoricProcessInstanceQuery()
                 .startedBy(sqBean.getAssignee())
+                .orderByProcessInstanceEndTime()
+                .desc()
                 .listPage((sqBean.getCurrentPage()-1)*sqBean.getPageSize(),sqBean.getPageSize());
         long count = historyService.createHistoricProcessInstanceQuery().startedBy(sqBean.getAssignee()).count();
         String hiList = JSONArray.toJSONString(hiList2,SerializerFeature.IgnoreErrorGetter);
@@ -377,24 +378,25 @@ public class CamundaController {
     //7、流程模板
     @ApiOperation(value = "获取流程模板",httpMethod = "GET")
     @GetMapping("/getProcessModel")
-    public byte[] getProcessModel(@ApiParam("processDefinitionId") String processDefinitionId) throws IOException {
-        InputStream is = repositoryService.getProcessModel(processDefinitionId);
+    public byte[] getProcessModel(@ApiParam("procDefId") String procDefId) throws IOException {
+        InputStream is = repositoryService.getProcessModel(procDefId);
         ByteArrayOutputStream swapStream = new ByteArrayOutputStream();
         byte[] buff = new byte[1024];
         int rc = 0;
         while ((rc = is.read(buff, 0, 1024)) > 0) {
             swapStream.write(buff, 0, rc);
         }
+
         return swapStream.toByteArray();
     }
 
     @ApiOperation(value = "获取流程定义信息",httpMethod = "GET")
     @GetMapping("/getProcessDefinition")
-    public String getProcessDefinition(@RequestParam("processDefinitionId") String processDefinitionId) {
+    public Result getProcessDefinition(@RequestParam("procDefId") String procDefId) {
         ProcessDefinition pd2 = repositoryService.createProcessDefinitionQuery()
-                .processDefinitionId(processDefinitionId)
+                .processDefinitionId(procDefId)
                 .singleResult();
-        return JSONObject.toJSONString(pd2,SerializerFeature.IgnoreErrorGetter);
+        return ResultFactory.buildSuccessResult(JSONObject.toJSONString(pd2,SerializerFeature.IgnoreErrorGetter));
     }
 
 
@@ -423,33 +425,33 @@ public class CamundaController {
     }
     @ApiOperation(value = "根据processDefinitionKey获取任务列表", httpMethod = "GET")
     @GetMapping("/getTaskListByProcessDefinitionKey")
-    public String getTaskListByProcessDefinitionKey(@RequestParam("processDefinitionKey") String processDefinitionKey) {
-        List<Task> taskList = taskService.createTaskQuery().processDefinitionKey(processDefinitionKey).list();
-        taskService.createTaskQuery().processDefinitionKey(processDefinitionKey).count();
-        return JSONArray.toJSONString(taskList, SerializerFeature.IgnoreErrorGetter);
+    public Result getTaskListByProcessDefinitionKey(@RequestParam("procDefKey") String procDefKey) {
+        List<Task> taskList = taskService.createTaskQuery().processDefinitionKey(procDefKey).list();
+        taskService.createTaskQuery().processDefinitionKey(procDefKey).count();
+        return ResultFactory.buildSuccessResult(JSONArray.toJSONString(taskList, SerializerFeature.IgnoreErrorGetter));
     }
     @ApiOperation(value = "根据processDefinitionKey获取任务数量", httpMethod = "GET")
     @GetMapping("/getTaskCountByProcessDefinitionKey")
-    public long getTaskCountByProcessDefinitionKey(@RequestParam("processDefinitionKey") String processDefinitionKey) {
+    public long getTaskCountByProcessDefinitionKey(@RequestParam("procDefKey") String procDefKey) {
 
-        return taskService.createTaskQuery().processDefinitionKey(processDefinitionKey).count();
+        return taskService.createTaskQuery().processDefinitionKey(procDefKey).count();
     }
 
     @ApiOperation(value = "根据processInstanceId获取当前用户任务节点", httpMethod = "GET")
     @GetMapping("/getHandleUserActivity")
-    public String getHandleUserActivity(@RequestParam("processInstanceId") String processInstanceId) {
+    public Result getHandleUserActivity(@RequestParam("procInstId") String procInstId) {
         List<HistoricTaskInstance> hiTaskList = historyService.createHistoricTaskInstanceQuery()
-                .processInstanceId(processInstanceId)
+                .processInstanceId(procInstId)
                 .orderByHistoricActivityInstanceStartTime()
                 .desc()
                 .list();
-        return JSONObject.toJSONString(hiTaskList, SerializerFeature.IgnoreErrorGetter);
+        return ResultFactory.buildSuccessResult(JSONObject.toJSONString(hiTaskList, SerializerFeature.IgnoreErrorGetter));
     }
     @ApiOperation(value = "根据processInstanceId获取当前待办节点", httpMethod = "GET")
     @GetMapping("/getUnfinishedUserActivity")
-    public String getUnfinishedUserActivity(@RequestParam("processInstanceId") String processInstanceId) {
+    public String getUnfinishedUserActivity(@RequestParam("procInstId") String procInstId) {
         List<HistoricTaskInstance> hiTaskList = historyService.createHistoricTaskInstanceQuery()
-                .processInstanceId(processInstanceId)
+                .processInstanceId(procInstId)
                 .unfinished()
                 .orderByHistoricActivityInstanceStartTime()
                 .desc()
@@ -458,15 +460,15 @@ public class CamundaController {
     }
     @ApiOperation(value = "根据processInstanceId获取所有经办节点", httpMethod = "GET")
     @GetMapping("/getHandleActivity")
-    public String getHandleActivity(@RequestParam("processInstanceId") String processInstanceId) {
+    public Result getHandleActivity(@RequestParam("procInstId") String procInstId) {
         List<HistoricActivityInstance> finished = historyService.createHistoricActivityInstanceQuery()
-                .processInstanceId(processInstanceId)
+                .processInstanceId(procInstId)
                 .finished()
                 .orderByHistoricActivityInstanceStartTime()
                 .asc()
                 .list();
 
-        return JSONObject.toJSONString(finished,SerializerFeature.IgnoreErrorGetter);
+        return ResultFactory.buildSuccessResult(JSONObject.toJSONString(finished,SerializerFeature.IgnoreErrorGetter));
     }
 
 
@@ -478,16 +480,16 @@ public class CamundaController {
     //10、获取用户列表
     @ApiOperation(value = "获取用户列表",httpMethod = "GET")
     @GetMapping("/getUserList")
-    public String getUserList(){
+    public Result getUserList(){
         List<User> userList = identityService.createUserQuery().list();
-        return JSONArray.toJSONString(userList,SerializerFeature.IgnoreErrorGetter);
+        return ResultFactory.buildSuccessResult(JSONArray.toJSONString(userList,SerializerFeature.IgnoreErrorGetter));
     }
     /**
      * 由camunda自动为数据库加密加盐
      */
     @ApiOperation(value = "添加用户(返回用户ID)",httpMethod = "POST")
     @PostMapping
-    public String addUser(@RequestBody AddUser addUser) {
+    public Result addUser(@RequestBody AddUser addUser) {
         UserEntity userEntity = new UserEntity();
         userEntity.setId(addUser.getId());
         userEntity.setFirstName(addUser.getFirstName());
@@ -495,7 +497,7 @@ public class CamundaController {
         userEntity.setEmail(addUser.getEmail());
         userEntity.setPassword(addUser.getPwd());
         identityService.saveUser(userEntity);
-        return addUser.getId();
+        return ResultFactory.buildSuccessResult(addUser.getId());
     }
     public void  setUserPicture(){
         String userId="zhangsan";
@@ -520,21 +522,21 @@ public class CamundaController {
      */
     @ApiOperation(value = "添加组(返回组id)", httpMethod = "POST")
     @PostMapping("/addGroup")
-    public String addGroup(@RequestBody AddGroup group) {
+    public Result addGroup(@RequestBody AddGroup group) {
         GroupEntity groupEntity = new GroupEntity();
         groupEntity.setId(group.getId());
         groupEntity.setName(group.getName());
         groupEntity.setRevision(group.getRev());
         groupEntity.setType(group.getType());
         identityService.saveGroup(groupEntity);
-        return group.getId();
+        return ResultFactory.buildSuccessResult(group.getId());
     }
     //11、获取组列表：收样组、质检组、抽提组、实验组、报告组
     @ApiOperation(value = "获取组列表",httpMethod = "GET")
     @GetMapping("/getGroupList")
-    public String getGroupList(){
+    public Result getGroupList(){
         List<Group> groupList = identityService.createGroupQuery().list();
-        return JSONArray.toJSONString(groupList,SerializerFeature.IgnoreErrorGetter);
+        return ResultFactory.buildSuccessResult(JSONArray.toJSONString(groupList,SerializerFeature.IgnoreErrorGetter));
     }
 
     /**
@@ -542,27 +544,39 @@ public class CamundaController {
      */
     @ApiOperation(value = "将用户添加到组",httpMethod = "GET")
     @GetMapping("/createMembership")
-    public void createMembership(@RequestParam("userId") String userId,@RequestParam("groupId")  String groupId) {
+    public Result createMembership(@RequestParam("userId") String userId,@RequestParam("groupId")  String groupId) {
         identityService.createMembership(userId, groupId);
+        return ResultFactory.buildSuccessResult(null);
     }
     //12、获取组用户列表
     @ApiOperation(value = "获取组用户列表",httpMethod = "GET")
     @GetMapping("/getGroupUserList")
-    public String getGroupUserList(@RequestParam("groupId")  String groupId) {
+    public Result getGroupUserList(@RequestParam("groupId")  String groupId) {
         List<User> userList = identityService.createUserQuery().memberOfGroup(groupId).list();
-        return JSONArray.toJSONString(userList,SerializerFeature.IgnoreErrorGetter);
+        return ResultFactory.buildSuccessResult(JSONArray.toJSONString(userList,SerializerFeature.IgnoreErrorGetter));
     }
     @ApiOperation(value = "获取组任务",httpMethod = "GET")
     @GetMapping("/getGroupTaskList")
-    public String getGroupTaskList(@RequestParam("groupId")  String groupId) {
+    public Result getGroupTaskList(@RequestParam("groupId")  String groupId) {
         List<Task> taskList = taskService.createTaskQuery().taskCandidateGroup(groupId).list();
-        return JSONArray.toJSONString(taskList,SerializerFeature.IgnoreErrorGetter);
+        return ResultFactory.buildSuccessResult(JSONArray.toJSONString(taskList,SerializerFeature.IgnoreErrorGetter));
     }
     @ApiOperation(value = "认领任务",httpMethod = "GET")
     @GetMapping("/claimTask")
-    public void claimTask(@RequestParam("userId")  String userId,@RequestParam("taskId")  String taskId) {
+    public Result claimTask(@RequestParam("userId")  String userId,@RequestParam("taskId")  String taskId) {
         taskService.claim(taskId,userId);
+        return ResultFactory.buildSuccessResult(null);
     }
+
+    @PostMapping("/my")
+    public void  my(@RequestBody List<Long> ids){
+        for(Long id : ids){
+            System.out.println("id === > "+id );
+        }
+
+    }
+
+
 
 
 

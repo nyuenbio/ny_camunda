@@ -15,7 +15,7 @@ import java.util.Map;
 @Data
 public class StartProcessBean {
     @NotEmpty
-    private String processDefinitionId;
+    private String procDefId;
 
     private String businessKey;
 
