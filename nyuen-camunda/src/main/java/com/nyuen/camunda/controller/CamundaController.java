@@ -4,10 +4,14 @@ package com.nyuen.camunda.controller;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.SerializerFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nyuen.camunda.common.PageBean;
+import com.nyuen.camunda.domain.po.ActIdGroup;
+import com.nyuen.camunda.domain.po.ActIdUser;
 import com.nyuen.camunda.domain.vo.SimpleQueryBean;
 import com.nyuen.camunda.result.Result;
 import com.nyuen.camunda.result.ResultFactory;
+import com.nyuen.camunda.service.MyIdentityService;
 import com.nyuen.camunda.service.MyTaskService;
 import com.nyuen.camunda.utils.ObjectUtil;
 import com.nyuen.camunda.utils.PageConvert;
@@ -15,20 +19,21 @@ import com.nyuen.camunda.vo.*;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import io.swagger.models.auth.In;
+import org.apache.commons.lang3.StringUtils;
 import org.camunda.bpm.engine.*;
 import org.camunda.bpm.engine.form.TaskFormData;
 import org.camunda.bpm.engine.history.*;
-import org.camunda.bpm.engine.identity.Group;
-import org.camunda.bpm.engine.identity.Picture;
-import org.camunda.bpm.engine.identity.User;
+import org.camunda.bpm.engine.identity.*;
 import org.camunda.bpm.engine.impl.persistence.entity.GroupEntity;
 import org.camunda.bpm.engine.impl.persistence.entity.TenantEntity;
 import org.camunda.bpm.engine.impl.persistence.entity.UserEntity;
 import org.camunda.bpm.engine.repository.Deployment;
 import org.camunda.bpm.engine.repository.DeploymentBuilder;
 import org.camunda.bpm.engine.repository.ProcessDefinition;
+import org.camunda.bpm.engine.runtime.ActivityInstance;
 import org.camunda.bpm.engine.task.Task;
 import org.camunda.commons.utils.IoUtil;
+import org.camunda.commons.utils.StringUtil;
 import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
 
@@ -64,6 +69,8 @@ public class CamundaController {
     private FormService formService;
     @Resource
     private MyTaskService myTaskService;
+    @Resource
+    private MyIdentityService myIdentityService;
 
     //0、获取所有流程部署信息
     @ApiIgnore
@@ -219,6 +226,24 @@ public class CamundaController {
             swapStream.write(buff, 0, rc);
         }
         return swapStream.toByteArray();
+    }
+
+
+    @ApiOperation(value = "删除定义（流程或表单），" +
+            "如果启用该值，cascade为true，则与此定义相关的所有实例（包括历史实例）也将被删除。"
+            ,httpMethod = "DELETE")
+    @DeleteMapping("/delProcessDefinition")
+    public Result delProcessDefinition(@RequestParam("deploymentId") String deploymentId,@RequestParam("cascade") boolean cascade){
+        repositoryService.deleteProcessDefinition(deploymentId,cascade);
+        return ResultFactory.buildSuccessResult(null);
+    }
+    @ApiOperation(value = "删除部署（流程或表单）"+
+            "如果启用该值，cascade为true，则与此部署相关的所有实例（包括历史实例）也将被删除。"
+            ,httpMethod = "DELETE")
+    @DeleteMapping("/delDeployment")
+    public Result delDeployment(@RequestParam("deploymentId") String deploymentId,@RequestParam("cascade") boolean cascade){
+        repositoryService.deleteDeployment(deploymentId,cascade);
+        return ResultFactory.buildSuccessResult(null);
     }
 
 
@@ -472,17 +497,121 @@ public class CamundaController {
     }
 
 
-    //8、流程节点详情
+    //8、节点对应的所有变量（区分不同类型情况）
+    public Result getNodeVariables(@RequestParam("procInstId") String procInstId){
+        //
+
+        return ResultFactory.buildSuccessResult(null);
+    }
+
+    //9、流程驳回
+    /**
+     * 流程驳回
+     * 1、验证。 具体要验证什么呢？包含当前流程实例状态、当前执行人是否为流程发起人、验证当前活动实例、
+     * 2、取消产生的任务  查找此流程产生的任务并取消
+     * 2、删除此流程实例
+     * @param procInstId 流程实例id
+     * @return 执行结果
+     */
+    @GetMapping("/processReject")
+    public Result processReject(@RequestParam("procInstId") String procInstId,String currentTaskId,
+                                String destTaskId,String taskDefKey,String rejectComment){
+        // todo
+        ActivityInstance tree = runtimeService.getActivityInstance(procInstId);
+        List<HistoricActivityInstance> resultList = historyService
+                .createHistoricActivityInstanceQuery()
+                .processInstanceId(procInstId)
+                .activityType("userTask")
+                .finished()
+                .orderByHistoricActivityInstanceEndTime()
+                .asc()
+                .list();
+        //得到任务节点id
+        List<HistoricActivityInstance> historicActivityInstanceList = resultList.stream().filter(
+                historicActivityInstance -> historicActivityInstance.getActivityId()
+                        .equals(rejectTaskDTO.getTaskKey())).collect(Collectors.toList());
+        HistoricActivityInstance historicActivityInstance = historicActivityInstanceList.get(0);
+        String toActId = historicActivityInstance.getActivityId();
+        taskService.createComment(destTaskId, procInstId, rejectComment);
+        runtimeService.createProcessInstanceModification(procInstId)
+                .cancelActivityInstance(getInstanceIdForActivity(tree, taskDefKey))
+                .cancelAllForActivity(currentTaskId)
+                .setAnnotation("进行了驳回到指定任务节点操作")
+                .startBeforeActivity(toActId)//启动目标活动节点
+                .execute();
+
+        return ResultFactory.buildSuccessResult(null);
+    }
+    public int withDraw(String procId, UserInfo userInfo) {
+        int state = checkProcessInstanceState(procId);
+        if( state != 0 ){
+            return state;
+        }
+
+        List<Task> taskList = taskService.createTaskQuery().processInstanceId(procId).list();
+        if(CollectionUtils.isEmpty(taskList)){
+            return 1;
+        }
+
+        // 判断当前执行人是否为流程发起人
+        state = checkProcessStarter(procId, userInfo);
+        if( state != 0 ){
+            return state;
+        }
+
+        Task task = taskList.get(0);
+        List<HistoricActivityInstance> historicActivityInstanceList = historyService.createHistoricActivityInstanceQuery()
+                .processInstanceId(task.getProcessInstanceId())
+                .activityType("userTask")
+                .finished().orderByHistoricActivityInstanceEndTime()
+                .asc().list();
+
+        if(historicActivityInstanceList == null || historicActivityInstanceList.isEmpty()){
+            return 2;
+        }
+
+        ActivityInstance activityInstance = runtimeService.getActivityInstance(task.getProcessInstanceId());
+        String toActId = historicActivityInstanceList.get(0).getActivityId();
+        String assignee = historicActivityInstanceList.get(0).getAssignee();
+        Map<String, Object> taskVariable = new HashMap<>();
+        //设置当前处理人
+        taskVariable.put("assignee", assignee);
+
+        runtimeService.createProcessInstanceModification(task.getProcessInstanceId())
+                //关闭相关任务
+                .cancelActivityInstance(getInstanceIdForActivity(activityInstance, task.getTaskDefinitionKey()))
+                .setAnnotation("进行了撤回到节点操作")
+                //启动目标活动节点
+                .startBeforeActivity(toActId)
+                //流程的可变参数赋值
+                .setVariables(taskVariable)
+                .execute();
+
+        runtimeService.deleteProcessInstance(task.getProcessInstanceId(), String.format("%s 用户执行了撤回操作", userInfo.getUserId()));
+
+        return 0;
+    }
+
 
 
     //9、流程转发
 
+
     //10、获取用户列表
-    @ApiOperation(value = "获取用户列表",httpMethod = "GET")
-    @GetMapping("/getUserList")
-    public Result getUserList(){
-        List<User> userList = identityService.createUserQuery().list();
-        return ResultFactory.buildSuccessResult(JSONArray.toJSONString(userList,SerializerFeature.IgnoreErrorGetter));
+    @ApiOperation(value = "获取用户列表",httpMethod = "POST")
+    @PostMapping("/getUserList")
+    public Result getUserList(@RequestBody SimpleQueryBean sqBean){
+        UserQuery uq = identityService.createUserQuery();
+        if(StringUtils.isNotEmpty(sqBean.getName())){
+            uq.userFirstNameLike(sqBean.getName());
+        }
+        List<User> userList = uq.listPage((sqBean.getCurrentPage()-1)*sqBean.getPageSize(),sqBean.getPageSize());
+        long userTotal = uq.count();
+        String str = JSONArray.toJSONString(userList,SerializerFeature.IgnoreErrorGetter);
+        Map<String,Object> result = new HashMap<>();
+        result.put("userList", JSONArray.parseArray(str, User.class));
+        result.put("total",userTotal);
+        return ResultFactory.buildSuccessResult(result);
     }
     /**
      * 由camunda自动为数据库加密加盐
@@ -499,6 +628,23 @@ public class CamundaController {
         identityService.saveUser(userEntity);
         return ResultFactory.buildSuccessResult(addUser.getId());
     }
+    /**
+     * 编辑组
+     */
+    @ApiOperation(value = "编辑用户", httpMethod = "GET")
+    @GetMapping("/updateUser")
+    public Result updateUser(String userId, String firstName) {
+        if(StringUtils.isEmpty(userId)){
+            return ResultFactory.buildFailResult("用户id不能为空");
+        }
+        ActIdUser user = new ActIdUser();
+        user.setId(userId);
+        user.setFirst(StringUtils.isNotEmpty(firstName)?firstName:null);
+        //user.setPwd(StringUtils.isNotEmpty(pwd)?pwd:null);
+        myIdentityService.updateUser(user);
+        return ResultFactory.buildSuccessResult(null);
+    }
+
     public void  setUserPicture(){
         String userId="zhangsan";
         byte[] bytes = IoUtil.fileAsByteArray(new File("src/main/resources/2.jpg"));
@@ -531,30 +677,103 @@ public class CamundaController {
         identityService.saveGroup(groupEntity);
         return ResultFactory.buildSuccessResult(group.getId());
     }
+    /**
+     * 编辑组
+     */
+    @ApiOperation(value = "编辑组", httpMethod = "GET")
+    @GetMapping("/updateGroup")
+    public Result updateGroup(String groupId, String groupName,String groupType) {
+        if(StringUtils.isEmpty(groupId)){
+            return ResultFactory.buildFailResult("组id不能为空");
+        }
+        ActIdGroup group = new ActIdGroup();
+        group.setId(groupId);
+        group.setName(StringUtils.isNotEmpty(groupName)?groupName:null);
+        group.setType(StringUtils.isNotEmpty(groupType)?groupType:null);
+        myIdentityService.updateGroup(group);
+        return ResultFactory.buildSuccessResult(null);
+    }
+
     //11、获取组列表：收样组、质检组、抽提组、实验组、报告组
-    @ApiOperation(value = "获取组列表",httpMethod = "GET")
-    @GetMapping("/getGroupList")
-    public Result getGroupList(){
-        List<Group> groupList = identityService.createGroupQuery().list();
-        return ResultFactory.buildSuccessResult(JSONArray.toJSONString(groupList,SerializerFeature.IgnoreErrorGetter));
+    @ApiOperation(value = "获取组列表",httpMethod = "POST")
+    @PostMapping("/getGroupList")
+    public Result getGroupList(@RequestBody SimpleQueryBean sqBean){
+        GroupQuery gq = identityService.createGroupQuery();
+        if(StringUtils.isNotEmpty(sqBean.getName())){
+            gq.groupNameLike(sqBean.getName());
+        }
+        List<Group> groupList = gq.listPage((sqBean.getCurrentPage()-1)*sqBean.getPageSize(),sqBean.getPageSize());
+        long groupTotal = gq.count();
+        String str = JSONArray.toJSONString(groupList,SerializerFeature.IgnoreErrorGetter);
+        Map<String,Object> result = new HashMap<>();
+        result.put("groupList", JSONArray.parseArray(str, Group.class));
+        result.put("total",groupTotal);
+        return ResultFactory.buildSuccessResult(result);
     }
 
     /**
      * 将用户添加到组
      */
-    @ApiOperation(value = "将用户添加到组",httpMethod = "GET")
-    @GetMapping("/createMembership")
-    public Result createMembership(@RequestParam("userId") String userId,@RequestParam("groupId")  String groupId) {
-        identityService.createMembership(userId, groupId);
+    @ApiOperation(value = "将用户添加到组",httpMethod = "POST")
+    @PostMapping("/createMembership")
+    public Result createMembership(@RequestBody Membership membership) {
+        if(membership == null || membership.getGroupIdList() == null || membership.getUserId() == null){
+            return ResultFactory.buildFailResult("groupId或userId不能为空");
+        }
+        for(String groupId : membership.getGroupIdList()) {
+            identityService.createMembership(membership.getUserId(), groupId);
+        }
         return ResultFactory.buildSuccessResult(null);
     }
+    /**
+     * 将用户从组中移除
+     */
+    @ApiOperation(value = "将用户从组中移除",httpMethod = "GET")
+    @GetMapping("/delMembership")
+    public Result delMembership(@RequestParam("userId") String userId,@RequestParam("groupId")  String groupId) {
+        identityService.deleteMembership(userId, groupId);
+        return ResultFactory.buildSuccessResult(null);
+    }
+    /**
+     * 删除用户
+     */
+    @ApiOperation(value = "删除用户",httpMethod = "GET")
+    @GetMapping("/delUser")
+    public Result delUser(@RequestParam("userId") String userId) {
+        identityService.deleteUser(userId);
+        return ResultFactory.buildSuccessResult(null);
+    }
+    /**
+     * 删除组
+     */
+    @ApiOperation(value = "删除组(同时删除拥有该组的用户的组)",httpMethod = "GET")
+    @GetMapping("/delGroup")
+    public Result delGroup(@RequestParam("groupId")  String groupId) {
+        identityService.deleteGroup(groupId);
+        return ResultFactory.buildSuccessResult(null);
+    }
+
+
     //12、获取组用户列表
     @ApiOperation(value = "获取组用户列表",httpMethod = "GET")
     @GetMapping("/getGroupUserList")
     public Result getGroupUserList(@RequestParam("groupId")  String groupId) {
         List<User> userList = identityService.createUserQuery().memberOfGroup(groupId).list();
-        return ResultFactory.buildSuccessResult(JSONArray.toJSONString(userList,SerializerFeature.IgnoreErrorGetter));
+        String str = JSONArray.toJSONString(userList,SerializerFeature.IgnoreErrorGetter);
+        List<User> userResultList = JSONArray.parseArray(str, User.class);
+        return ResultFactory.buildSuccessResult(userResultList);
     }
+    @ApiOperation(value = "获取用户所在组列表",httpMethod = "GET")
+    @GetMapping("/getUserGroupList")
+    public Result getUserGroupList(@RequestParam("userId")  String userId) {
+        List<Group> groupList = identityService.createGroupQuery()
+                .groupMember(userId)
+                .list();
+        String str = JSONArray.toJSONString(groupList,SerializerFeature.IgnoreErrorGetter);
+        List<Group> groupResultList = JSONArray.parseArray(str, Group.class);
+        return ResultFactory.buildSuccessResult(groupResultList);
+    }
+
     @ApiOperation(value = "获取组任务",httpMethod = "GET")
     @GetMapping("/getGroupTaskList")
     public Result getGroupTaskList(@RequestParam("groupId")  String groupId) {

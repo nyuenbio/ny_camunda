@@ -13,6 +13,7 @@ import lombok.Data;
 public class SimpleQueryBean {
 
     private String assignee;
+    private String name;
     private int currentPage;
     private int pageSize;
 
