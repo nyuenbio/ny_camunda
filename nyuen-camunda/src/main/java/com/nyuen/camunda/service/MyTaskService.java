@@ -18,4 +18,6 @@ public interface MyTaskService {
     PageBean getTodoTaskList(Map<String,Object> params);
 
     PageBean getHistoryTaskList(Map<String,Object> params);
+
+    PageBean getSampleProcessList(Map<String,Object> params);
 }

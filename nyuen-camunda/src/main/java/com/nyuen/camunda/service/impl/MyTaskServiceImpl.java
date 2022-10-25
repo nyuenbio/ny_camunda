@@ -1,8 +1,10 @@
 package com.nyuen.camunda.service.impl;
 
 import com.nyuen.camunda.common.PageBean;
+import com.nyuen.camunda.domain.po.ActHiProcinst;
 import com.nyuen.camunda.domain.vo.HistoryTask;
 import com.nyuen.camunda.domain.vo.TodoTask;
+import com.nyuen.camunda.mapper.ActHiProcinstMapper;
 import com.nyuen.camunda.mapper.ActHiTaskinstMapper;
 import com.nyuen.camunda.mapper.ActRuTaskMapper;
 import com.nyuen.camunda.service.MyTaskService;
@@ -25,6 +27,8 @@ public class MyTaskServiceImpl implements MyTaskService {
     private ActRuTaskMapper actRuTaskMapper;
     @Resource
     private ActHiTaskinstMapper actHiTaskinstMapper;
+    @Resource
+    private ActHiProcinstMapper actHiProcinstMapper;
 
     @Override
     public PageBean getTodoTaskList(Map<String, Object> params) {
@@ -39,4 +43,14 @@ public class MyTaskServiceImpl implements MyTaskService {
         int total = actHiTaskinstMapper.getHistoryTaskTotal(params);
         return new PageBean(total, historyTaskList);
     }
+
+    @Override
+    public PageBean getSampleProcessList(Map<String,Object> params) {
+        List<ActHiProcinst> actHiProcinstList = actHiProcinstMapper.getSampleProcessList(params);
+        int total = actHiProcinstMapper.getSampleProcessListCount(params);
+
+        return new PageBean(total, actHiProcinstList);
+    }
+
+
 }
