@@ -400,6 +400,9 @@
             1 = 1
             AND RES.ASSIGNEE_ = #{assignee,jdbcType=VARCHAR}
             AND RES.END_TIME_ IS NOT NULL
+            <if test="name != null and name != ''">
+              and HIP.BUSINESS_KEY_ like concat("%",#{name},"%")
+            </if>
         )
     ORDER BY
         RES.END_TIME_ DESC
@@ -416,6 +419,9 @@
             1 = 1
             AND RES.ASSIGNEE_ = #{assignee,jdbcType=VARCHAR}
             AND RES.END_TIME_ IS NOT NULL
+            <if test="name != null and name != ''">
+              and HIP.BUSINESS_KEY_ like concat("%",#{name},"%")
+            </if>
         )
   </select>
 

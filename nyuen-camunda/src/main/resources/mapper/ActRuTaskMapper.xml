@@ -357,6 +357,9 @@
         LEFT JOIN act_re_procdef DEF on RES.PROC_DEF_ID_ = DEF.ID_
     WHERE
         RES.ASSIGNEE_ = #{assignee,jdbcType=VARCHAR}
+        <if test="name != null and name != ''">
+          and HIP.BUSINESS_KEY_ like concat("%",#{name},"%")
+        </if>
     ORDER BY
         RES.CREATE_TIME_ DESC
   </select>
@@ -368,6 +371,9 @@
         LEFT JOIN act_re_procdef DEF on RES.PROC_DEF_ID_ = DEF.ID_
     WHERE
         RES.ASSIGNEE_ = #{assignee,jdbcType=VARCHAR}
+        <if test="name != null and name != ''">
+          and HIP.BUSINESS_KEY_ like concat("%",#{name},"%")
+        </if>
   </select>
 
 

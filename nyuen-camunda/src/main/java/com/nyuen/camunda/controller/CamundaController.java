@@ -41,6 +41,7 @@ import springfox.documentation.annotations.ApiIgnore;
 import javax.annotation.Resource;
 import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 
 /**
@@ -128,7 +129,7 @@ public class CamundaController {
     @ApiOperation(value = "根据taskId获取form内容",httpMethod = "GET")
     @GetMapping("/getFormByTaskId")
     public byte[] getFormByTaskId(@RequestParam("taskId") String taskId) throws IOException {
-        // todo 有bug???
+        // todo 有bug???没有
         InputStream is = formService.getDeployedTaskForm(taskId);
 
         ByteArrayOutputStream swapStream = new ByteArrayOutputStream();
@@ -156,14 +157,22 @@ public class CamundaController {
         //Object obj = formService.getRenderedTaskForm(taskId);
         //不适用于已办节点
         //TaskFormData tfData = formService.getTaskFormData(taskId);
-        List<HistoricVariableInstance> hviList = historyService.createHistoricVariableInstanceQuery()
-                .processInstanceId(procInstId)
-                .list();
-        // todo 不适用于待办节点
+        // 不适用于待办节点,待办节点本身就还没有变量
         List<HistoricVariableInstance> hviList2 = historyService.createHistoricVariableInstanceQuery()
                 .processInstanceIdIn(procInstId)
-                .listPage(0,10);
-        return ResultFactory.buildSuccessResult(JSONArray.toJSONString(hviList2,SerializerFeature.IgnoreErrorGetter));
+                .list();
+        String hviListStr = JSONArray.toJSONString(hviList2,SerializerFeature.IgnoreErrorGetter);
+        return ResultFactory.buildSuccessResult(JSONArray.parseArray(hviListStr));
+    }
+    @ApiOperation(value = "根据taskId获取流程变量",httpMethod = "GET")
+    @GetMapping("/getProcessVariableByTaskId")
+    public Result getProcessVariableByTaskId(@RequestParam("taskId") String taskId) {
+        // 不适用于待办节点,待办节点本身就还没有变量
+        List<HistoricVariableInstance> hviList = historyService.createHistoricVariableInstanceQuery()
+                .taskIdIn(taskId)
+                .list();
+        String hviListStr = JSONArray.toJSONString(hviList,SerializerFeature.IgnoreErrorGetter);
+        return ResultFactory.buildSuccessResult(JSONArray.parseArray(hviListStr));
     }
 
     /**
@@ -262,11 +271,16 @@ public class CamundaController {
     @ApiOperation(value = "处理流程节点(带全局变量的节点)",httpMethod = "POST")
     @PostMapping("/dealTask")
     public Result dealTask(@RequestBody DealTaskBean dealTaskBean){
+        if(null == dealTaskBean || null == dealTaskBean.getTaskId()){
+            return ResultFactory.buildFailResult("taskId不能为空");
+        }
         //添加审批人
-        processEngine.getIdentityService().setAuthenticatedUserId(dealTaskBean.getAssignee());
+        if(StringUtils.isNotEmpty(dealTaskBean.getAssignee())) {
+            processEngine.getIdentityService().setAuthenticatedUserId(dealTaskBean.getAssignee());
+        }
         //添加审批意见，可在Act_Hi_Comment里的message查询到
         //三个参数分别为待办任务ID,流程实例ID,审批意见
-        if(null != dealTaskBean.getComment()) {
+        if(StringUtils.isNotEmpty(dealTaskBean.getComment())) {
             taskService.createComment(dealTaskBean.getTaskId(), dealTaskBean.getProcInstId(), dealTaskBean.getComment());
         }
         //处理节点变量
@@ -274,7 +288,7 @@ public class CamundaController {
             taskService.setVariables(dealTaskBean.getTaskId(), dealTaskBean.getVariables());
         }
         //处理节点表单 TODO
-        //formService.submitTaskForm(dealTaskBean.getTaskId(), dealTaskBean.getProperties());
+        //formService.submitTaskForm(dealTaskBean.getTaskId(), dealTaskBean.getVariables());
         //任务完成,也就是审批通过
         taskService.complete(dealTaskBean.getTaskId());
 
@@ -283,11 +297,16 @@ public class CamundaController {
     @ApiOperation(value = "处理流程节点(带局部变量的节点)",httpMethod = "POST")
     @PostMapping("/dealTaskLocal")
     public Result dealTaskLocal(@RequestBody DealTaskBean dealTaskBean){
+        if(null == dealTaskBean || null == dealTaskBean.getTaskId()){
+            return ResultFactory.buildFailResult("taskId不能为空");
+        }
         //添加审批人
-        processEngine.getIdentityService().setAuthenticatedUserId(dealTaskBean.getAssignee());
+        if(StringUtils.isNotEmpty(dealTaskBean.getAssignee())) {
+            processEngine.getIdentityService().setAuthenticatedUserId(dealTaskBean.getAssignee());
+        }
         //添加审批意见，可在Act_Hi_Comment里的message查询到
         //三个参数分别为待办任务ID,流程实例ID,审批意见
-        if(null != dealTaskBean.getComment()) {
+        if(StringUtils.isNotEmpty(dealTaskBean.getComment())) {
             taskService.createComment(dealTaskBean.getTaskId(), dealTaskBean.getProcInstId(), dealTaskBean.getComment());
         }
         if(null != dealTaskBean.getVariables()) {
@@ -315,10 +334,14 @@ public class CamundaController {
     public Result checkByInitiatorNew(@RequestBody SimpleQueryBean sqBean) {
         List<HistoricProcessInstance> hiList2 = historyService.createHistoricProcessInstanceQuery()
                 .startedBy(sqBean.getAssignee())
+                .processInstanceBusinessKeyLike(sqBean.getName())
                 .orderByProcessInstanceEndTime()
                 .desc()
                 .listPage((sqBean.getCurrentPage()-1)*sqBean.getPageSize(),sqBean.getPageSize());
-        long count = historyService.createHistoricProcessInstanceQuery().startedBy(sqBean.getAssignee()).count();
+        long count = historyService.createHistoricProcessInstanceQuery()
+                .processInstanceBusinessKeyLike(sqBean.getName())
+                .startedBy(sqBean.getAssignee())
+                .count();
         String hiList = JSONArray.toJSONString(hiList2,SerializerFeature.IgnoreErrorGetter);
 
         Map<String,Object> result = new HashMap<>();
@@ -348,6 +371,12 @@ public class CamundaController {
         PageBean pageBean = myTaskService.getTodoTaskList(params);
         return ResultFactory.buildSuccessResult(pageBean);
     }
+
+    /**
+     * 获取首页我的待办、已办、发起流程数量
+     * @param userId 用户id
+     * @return 统计数量Map
+     */
     @ApiOperation(value = "流程统计",httpMethod = "GET")
     @GetMapping("/getProcessStatistics")
     public Result getProcessStatistics(@RequestParam("userId") String userId) {
@@ -492,12 +521,13 @@ public class CamundaController {
                 .orderByHistoricActivityInstanceStartTime()
                 .asc()
                 .list();
+        String str = JSONObject.toJSONString(finished,SerializerFeature.IgnoreErrorGetter);
 
-        return ResultFactory.buildSuccessResult(JSONObject.toJSONString(finished,SerializerFeature.IgnoreErrorGetter));
+        return ResultFactory.buildSuccessResult(JSONArray.parseArray(str));
     }
 
 
-    //8、节点对应的所有变量（区分不同类型情况）
+    //8、节点对应的所有变量（区分不同变量类型情况）
     public Result getNodeVariables(@RequestParam("procInstId") String procInstId){
         //
 
@@ -515,7 +545,8 @@ public class CamundaController {
      */
     @GetMapping("/processReject")
     public Result processReject(@RequestParam("procInstId") String procInstId,String currentTaskId,
-                                String destTaskId,String taskDefKey,String rejectComment){
+                                String destTaskId,String destTaskDefKey,
+                                String rejectTaskKey,String rejectComment){
         // todo
         ActivityInstance tree = runtimeService.getActivityInstance(procInstId);
         List<HistoricActivityInstance> resultList = historyService
@@ -529,12 +560,12 @@ public class CamundaController {
         //得到任务节点id
         List<HistoricActivityInstance> historicActivityInstanceList = resultList.stream().filter(
                 historicActivityInstance -> historicActivityInstance.getActivityId()
-                        .equals(rejectTaskDTO.getTaskKey())).collect(Collectors.toList());
+                        .equals(rejectTaskKey)).collect(Collectors.toList());
         HistoricActivityInstance historicActivityInstance = historicActivityInstanceList.get(0);
         String toActId = historicActivityInstance.getActivityId();
         taskService.createComment(destTaskId, procInstId, rejectComment);
         runtimeService.createProcessInstanceModification(procInstId)
-                .cancelActivityInstance(getInstanceIdForActivity(tree, taskDefKey))
+                .cancelActivityInstance(getInstanceIdForActivity(tree, destTaskDefKey))
                 .cancelAllForActivity(currentTaskId)
                 .setAnnotation("进行了驳回到指定任务节点操作")
                 .startBeforeActivity(toActId)//启动目标活动节点
@@ -542,54 +573,9 @@ public class CamundaController {
 
         return ResultFactory.buildSuccessResult(null);
     }
-    public int withDraw(String procId, UserInfo userInfo) {
-        int state = checkProcessInstanceState(procId);
-        if( state != 0 ){
-            return state;
-        }
+    private String getInstanceIdForActivity(ActivityInstance tree,String destTaskDefKey){
 
-        List<Task> taskList = taskService.createTaskQuery().processInstanceId(procId).list();
-        if(CollectionUtils.isEmpty(taskList)){
-            return 1;
-        }
-
-        // 判断当前执行人是否为流程发起人
-        state = checkProcessStarter(procId, userInfo);
-        if( state != 0 ){
-            return state;
-        }
-
-        Task task = taskList.get(0);
-        List<HistoricActivityInstance> historicActivityInstanceList = historyService.createHistoricActivityInstanceQuery()
-                .processInstanceId(task.getProcessInstanceId())
-                .activityType("userTask")
-                .finished().orderByHistoricActivityInstanceEndTime()
-                .asc().list();
-
-        if(historicActivityInstanceList == null || historicActivityInstanceList.isEmpty()){
-            return 2;
-        }
-
-        ActivityInstance activityInstance = runtimeService.getActivityInstance(task.getProcessInstanceId());
-        String toActId = historicActivityInstanceList.get(0).getActivityId();
-        String assignee = historicActivityInstanceList.get(0).getAssignee();
-        Map<String, Object> taskVariable = new HashMap<>();
-        //设置当前处理人
-        taskVariable.put("assignee", assignee);
-
-        runtimeService.createProcessInstanceModification(task.getProcessInstanceId())
-                //关闭相关任务
-                .cancelActivityInstance(getInstanceIdForActivity(activityInstance, task.getTaskDefinitionKey()))
-                .setAnnotation("进行了撤回到节点操作")
-                //启动目标活动节点
-                .startBeforeActivity(toActId)
-                //流程的可变参数赋值
-                .setVariables(taskVariable)
-                .execute();
-
-        runtimeService.deleteProcessInstance(task.getProcessInstanceId(), String.format("%s 用户执行了撤回操作", userInfo.getUserId()));
-
-        return 0;
+        return null;
     }
 
 
@@ -794,7 +780,6 @@ public class CamundaController {
         }
 
     }
-
 
 
 
