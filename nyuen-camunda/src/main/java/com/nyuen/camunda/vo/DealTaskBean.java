@@ -4,6 +4,7 @@ import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
 import javax.validation.constraints.NotEmpty;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -21,10 +22,8 @@ public class DealTaskBean {
 
     @NotEmpty
     private String taskId;
-    @NotEmpty
+
     private String procInstId;
-//    private String activityInstanceId;
-//    private String executionId;
 
     @ApiModelProperty(value = "流程处理意见")
     private String comment;
@@ -32,6 +31,6 @@ public class DealTaskBean {
     @ApiModelProperty(value = "节点变量")
     private Map<String,Object> variables;
 
-//    @ApiModelProperty(value = "表单变量")
-//    private Map<String, Object> properties;
+    private List<AttachmentVo> attachmentVoList;
+
 }
