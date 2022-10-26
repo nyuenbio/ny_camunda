@@ -32,3 +32,6 @@ logging:
     com.nyuen.camunda.mappper: debug
     org.camunda: debug
 
+file:
+  saveRootPath: /share_data/clin_result/clin_laboratory/camunda-file/
+  readRootPath: http://report.nyuen-group.com:8077/clin_laboratory/camunda-file/
