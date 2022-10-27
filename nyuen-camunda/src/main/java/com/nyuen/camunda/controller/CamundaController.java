@@ -4,7 +4,6 @@ package com.nyuen.camunda.controller;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.SerializerFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nyuen.camunda.common.PageBean;
 import com.nyuen.camunda.domain.po.ActIdGroup;
 import com.nyuen.camunda.domain.po.ActIdUser;
@@ -13,12 +12,12 @@ import com.nyuen.camunda.result.Result;
 import com.nyuen.camunda.result.ResultFactory;
 import com.nyuen.camunda.service.MyIdentityService;
 import com.nyuen.camunda.service.MyTaskService;
+import com.nyuen.camunda.utils.CamundaObjectUtil;
 import com.nyuen.camunda.utils.ObjectUtil;
 import com.nyuen.camunda.utils.PageConvert;
 import com.nyuen.camunda.vo.*;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
-import io.swagger.models.auth.In;
 import org.apache.commons.lang3.StringUtils;
 import org.camunda.bpm.engine.*;
 import org.camunda.bpm.engine.form.TaskFormData;
@@ -33,7 +32,6 @@ import org.camunda.bpm.engine.repository.ProcessDefinition;
 import org.camunda.bpm.engine.runtime.ActivityInstance;
 import org.camunda.bpm.engine.task.Task;
 import org.camunda.commons.utils.IoUtil;
-import org.camunda.commons.utils.StringUtil;
 import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
 
@@ -134,7 +132,7 @@ public class CamundaController {
 
         ByteArrayOutputStream swapStream = new ByteArrayOutputStream();
         byte[] buff = new byte[1024];
-        int rc = 0;
+        int rc;
         while ((rc = is.read(buff, 0, 1024)) > 0) {
             swapStream.write(buff, 0, rc);
         }
@@ -161,8 +159,7 @@ public class CamundaController {
         List<HistoricVariableInstance> hviList2 = historyService.createHistoricVariableInstanceQuery()
                 .processInstanceIdIn(procInstId)
                 .list();
-        String hviListStr = JSONArray.toJSONString(hviList2,SerializerFeature.IgnoreErrorGetter);
-        return ResultFactory.buildSuccessResult(JSONArray.parseArray(hviListStr));
+        return ResultFactory.buildSuccessResult(CamundaObjectUtil.objectListToJSONArray(hviList2));
     }
     @ApiOperation(value = "根据taskId获取流程变量",httpMethod = "GET")
     @GetMapping("/getProcessVariableByTaskId")
@@ -171,8 +168,7 @@ public class CamundaController {
         List<HistoricVariableInstance> hviList = historyService.createHistoricVariableInstanceQuery()
                 .taskIdIn(taskId)
                 .list();
-        String hviListStr = JSONArray.toJSONString(hviList,SerializerFeature.IgnoreErrorGetter);
-        return ResultFactory.buildSuccessResult(JSONArray.parseArray(hviListStr));
+        return ResultFactory.buildSuccessResult(CamundaObjectUtil.objectListToJSONArray(hviList));
     }
 
     /**
@@ -211,7 +207,7 @@ public class CamundaController {
         InputStream is = repositoryService.getResourceAsStream(deploymentId,name+".form");
         ByteArrayOutputStream swapStream = new ByteArrayOutputStream();
         byte[] buff = new byte[1024];
-        int rc = 0;
+        int rc;
         while ((rc = is.read(buff, 0, 1024)) > 0) {
             swapStream.write(buff, 0, rc);
         }
@@ -221,7 +217,7 @@ public class CamundaController {
     @GetMapping("/getDeployForm2")
     public Object getDeployForm2(String deploymentId,String name) throws IOException {
         //List<String> deployFormList=repositoryService.getDeploymentResourceNames(deploymentId);
-        InputStream is = null;
+        InputStream is;
         try {
             is = repositoryService.getResourceAsStream(deploymentId,name+".form");
         } catch (Exception e) {
@@ -230,7 +226,7 @@ public class CamundaController {
         }
         ByteArrayOutputStream swapStream = new ByteArrayOutputStream();
         byte[] buff = new byte[1024];
-        int rc = 0;
+        int rc;
         while ((rc = is.read(buff, 0, 1024)) > 0) {
             swapStream.write(buff, 0, rc);
         }
@@ -332,7 +328,7 @@ public class CamundaController {
     @ApiOperation(value = "我发起的流程new", httpMethod = "POST")
     @PostMapping("/checkByInitiatorNew")
     public Result checkByInitiatorNew(@RequestBody SimpleQueryBean sqBean) {
-        List<HistoricProcessInstance> hiList2 = historyService.createHistoricProcessInstanceQuery()
+        List<HistoricProcessInstance> hiList = historyService.createHistoricProcessInstanceQuery()
                 .startedBy(sqBean.getAssignee())
                 .processInstanceBusinessKeyLike(sqBean.getName())
                 .orderByProcessInstanceEndTime()
@@ -342,10 +338,8 @@ public class CamundaController {
                 .processInstanceBusinessKeyLike(sqBean.getName())
                 .startedBy(sqBean.getAssignee())
                 .count();
-        String hiList = JSONArray.toJSONString(hiList2,SerializerFeature.IgnoreErrorGetter);
-
         Map<String,Object> result = new HashMap<>();
-        result.put("rows", JSONArray.parseArray(hiList));
+        result.put("rows", CamundaObjectUtil.objectListToJSONArray(hiList));
         result.put("total",count);
         return ResultFactory.buildSuccessResult(result);
     }
@@ -360,8 +354,7 @@ public class CamundaController {
                 .desc()
                 .list();
 
-        String result = JSONArray.toJSONString(taskList,SerializerFeature.IgnoreErrorGetter);
-        return result;
+        return JSONArray.toJSONString(taskList,SerializerFeature.IgnoreErrorGetter);
     }
     @ApiOperation(value = "我的待办流程new",httpMethod = "POST")
     @PostMapping("/getTodoListNew")
@@ -436,7 +429,7 @@ public class CamundaController {
         InputStream is = repositoryService.getProcessModel(procDefId);
         ByteArrayOutputStream swapStream = new ByteArrayOutputStream();
         byte[] buff = new byte[1024];
-        int rc = 0;
+        int rc;
         while ((rc = is.read(buff, 0, 1024)) > 0) {
             swapStream.write(buff, 0, rc);
         }
@@ -515,15 +508,13 @@ public class CamundaController {
     @ApiOperation(value = "根据processInstanceId获取所有经办节点", httpMethod = "GET")
     @GetMapping("/getHandleActivity")
     public Result getHandleActivity(@RequestParam("procInstId") String procInstId) {
-        List<HistoricActivityInstance> finished = historyService.createHistoricActivityInstanceQuery()
+        List<HistoricActivityInstance> finishedList = historyService.createHistoricActivityInstanceQuery()
                 .processInstanceId(procInstId)
                 .finished()
                 .orderByHistoricActivityInstanceStartTime()
                 .asc()
                 .list();
-        String str = JSONObject.toJSONString(finished,SerializerFeature.IgnoreErrorGetter);
-
-        return ResultFactory.buildSuccessResult(JSONArray.parseArray(str));
+        return ResultFactory.buildSuccessResult(CamundaObjectUtil.objectListToJSONArray(finishedList));
     }
 
 
@@ -593,9 +584,8 @@ public class CamundaController {
         }
         List<User> userList = uq.listPage((sqBean.getCurrentPage()-1)*sqBean.getPageSize(),sqBean.getPageSize());
         long userTotal = uq.count();
-        String str = JSONArray.toJSONString(userList,SerializerFeature.IgnoreErrorGetter);
         Map<String,Object> result = new HashMap<>();
-        result.put("userList", JSONArray.parseArray(str, User.class));
+        result.put("userList", CamundaObjectUtil.objectListToJSONArray(userList,User.class));
         result.put("total",userTotal);
         return ResultFactory.buildSuccessResult(result);
     }
@@ -631,7 +621,8 @@ public class CamundaController {
         return ResultFactory.buildSuccessResult(null);
     }
 
-    public void  setUserPicture(){
+
+    public void  setUserPicture(String fileUrl){
         String userId="zhangsan";
         byte[] bytes = IoUtil.fileAsByteArray(new File("src/main/resources/2.jpg"));
         Picture picture=new Picture(bytes,"jpg");
@@ -690,9 +681,8 @@ public class CamundaController {
         }
         List<Group> groupList = gq.listPage((sqBean.getCurrentPage()-1)*sqBean.getPageSize(),sqBean.getPageSize());
         long groupTotal = gq.count();
-        String str = JSONArray.toJSONString(groupList,SerializerFeature.IgnoreErrorGetter);
         Map<String,Object> result = new HashMap<>();
-        result.put("groupList", JSONArray.parseArray(str, Group.class));
+        result.put("groupList", CamundaObjectUtil.objectListToJSONArray(groupList,Group.class));
         result.put("total",groupTotal);
         return ResultFactory.buildSuccessResult(result);
     }
@@ -745,9 +735,8 @@ public class CamundaController {
     @GetMapping("/getGroupUserList")
     public Result getGroupUserList(@RequestParam("groupId")  String groupId) {
         List<User> userList = identityService.createUserQuery().memberOfGroup(groupId).list();
-        String str = JSONArray.toJSONString(userList,SerializerFeature.IgnoreErrorGetter);
-        List<User> userResultList = JSONArray.parseArray(str, User.class);
-        return ResultFactory.buildSuccessResult(userResultList);
+
+        return ResultFactory.buildSuccessResult(CamundaObjectUtil.objectListToJSONArray(userList,User.class));
     }
     @ApiOperation(value = "获取用户所在组列表",httpMethod = "GET")
     @GetMapping("/getUserGroupList")
@@ -755,16 +744,14 @@ public class CamundaController {
         List<Group> groupList = identityService.createGroupQuery()
                 .groupMember(userId)
                 .list();
-        String str = JSONArray.toJSONString(groupList,SerializerFeature.IgnoreErrorGetter);
-        List<Group> groupResultList = JSONArray.parseArray(str, Group.class);
-        return ResultFactory.buildSuccessResult(groupResultList);
+        return ResultFactory.buildSuccessResult(CamundaObjectUtil.objectListToJSONArray(groupList,Group.class));
     }
 
     @ApiOperation(value = "获取组任务",httpMethod = "GET")
     @GetMapping("/getGroupTaskList")
     public Result getGroupTaskList(@RequestParam("groupId")  String groupId) {
         List<Task> taskList = taskService.createTaskQuery().taskCandidateGroup(groupId).list();
-        return ResultFactory.buildSuccessResult(JSONArray.toJSONString(taskList,SerializerFeature.IgnoreErrorGetter));
+        return ResultFactory.buildSuccessResult(CamundaObjectUtil.objectListToJSONArray(taskList,Task.class));
     }
     @ApiOperation(value = "认领任务",httpMethod = "GET")
     @GetMapping("/claimTask")
