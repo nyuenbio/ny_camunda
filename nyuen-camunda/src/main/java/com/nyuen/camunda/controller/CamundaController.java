@@ -484,7 +484,7 @@ public class CamundaController {
         return taskService.createTaskQuery().processDefinitionKey(procDefKey).count();
     }
 
-    @ApiOperation(value = "根据processInstanceId获取当前用户任务节点", httpMethod = "GET")
+    @ApiOperation(value = "根据processInstanceId获取当前用户任务节点(弃用)", httpMethod = "GET")
     @GetMapping("/getHandleUserActivity")
     public Result getHandleUserActivity(@RequestParam("procInstId") String procInstId) {
         List<HistoricTaskInstance> hiTaskList = historyService.createHistoricTaskInstanceQuery()
@@ -497,6 +497,7 @@ public class CamundaController {
     @ApiOperation(value = "根据processInstanceId获取当前待办节点", httpMethod = "GET")
     @GetMapping("/getUnfinishedUserActivity")
     public String getUnfinishedUserActivity(@RequestParam("procInstId") String procInstId) {
+        //只返回当前待办的一个节点
         List<HistoricTaskInstance> hiTaskList = historyService.createHistoricTaskInstanceQuery()
                 .processInstanceId(procInstId)
                 .unfinished()
@@ -516,6 +517,35 @@ public class CamundaController {
                 .list();
         return ResultFactory.buildSuccessResult(CamundaObjectUtil.objectListToJSONArray(finishedList));
     }
+
+    @ApiOperation(value = "根据procInstId获取渲染节点", httpMethod = "GET")
+    @GetMapping("/getRenderingActivity")
+    public Result getRenderingActivity(@RequestParam("procInstId") String procInstId) {
+        List<HistoricActivityInstance> finishedList = historyService.createHistoricActivityInstanceQuery()
+                .processInstanceId(procInstId)
+                .finished()
+                .orderByHistoricActivityInstanceStartTime()
+                .asc()
+                .list();
+        List<HistoricActivityInstance> resultList = new ArrayList<>();
+        //获取最后一个节点，即待办节点
+        HistoricActivityInstance todoHai = finishedList.get(finishedList.size()-1);
+        //返回到待办节点之前的顺序不重复的节点list
+        LinkedHashMap<String,Object> linkedHashMap = new LinkedHashMap();
+        for(HistoricActivityInstance hai : finishedList){
+            linkedHashMap.put(hai.getActivityId(),hai);
+        }
+        ListIterator<Map.Entry<String,Object>> li = new ArrayList<>(linkedHashMap.entrySet()).listIterator();
+        while (li.hasNext()) {
+            Map.Entry<String, Object> entry = li.next();
+            resultList.add((HistoricActivityInstance) entry.getValue());
+            if(todoHai.getActivityId().equals(entry.getKey())){
+                break;
+            }
+        }
+        return ResultFactory.buildSuccessResult(CamundaObjectUtil.objectListToJSONArray(resultList));
+    }
+
 
 
     //8、节点对应的所有变量（区分不同变量类型情况）
