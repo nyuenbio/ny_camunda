@@ -120,6 +120,7 @@
       <artifactId>spring-cloud-starter-eureka</artifactId>
       <version>1.4.7.RELEASE</version>
     </dependency>
+
   </dependencies>
 
   <dependencyManagement>

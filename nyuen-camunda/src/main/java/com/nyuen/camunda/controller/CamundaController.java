@@ -525,51 +525,6 @@ public class CamundaController {
         return ResultFactory.buildSuccessResult(null);
     }
 
-    //9、流程驳回
-    /**
-     * 流程驳回
-     * 1、验证。 具体要验证什么呢？包含当前流程实例状态、当前执行人是否为流程发起人、验证当前活动实例、
-     * 2、取消产生的任务  查找此流程产生的任务并取消
-     * 2、删除此流程实例
-     * @param procInstId 流程实例id
-     * @return 执行结果
-     */
-    @GetMapping("/processReject")
-    public Result processReject(@RequestParam("procInstId") String procInstId,String currentTaskId,
-                                String destTaskId,String destTaskDefKey,
-                                String rejectTaskKey,String rejectComment){
-        // todo
-        ActivityInstance tree = runtimeService.getActivityInstance(procInstId);
-        List<HistoricActivityInstance> resultList = historyService
-                .createHistoricActivityInstanceQuery()
-                .processInstanceId(procInstId)
-                .activityType("userTask")
-                .finished()
-                .orderByHistoricActivityInstanceEndTime()
-                .asc()
-                .list();
-        //得到任务节点id
-        List<HistoricActivityInstance> historicActivityInstanceList = resultList.stream().filter(
-                historicActivityInstance -> historicActivityInstance.getActivityId()
-                        .equals(rejectTaskKey)).collect(Collectors.toList());
-        HistoricActivityInstance historicActivityInstance = historicActivityInstanceList.get(0);
-        String toActId = historicActivityInstance.getActivityId();
-        taskService.createComment(destTaskId, procInstId, rejectComment);
-        runtimeService.createProcessInstanceModification(procInstId)
-                .cancelActivityInstance(getInstanceIdForActivity(tree, destTaskDefKey))
-                .cancelAllForActivity(currentTaskId)
-                .setAnnotation("进行了驳回到指定任务节点操作")
-                .startBeforeActivity(toActId)//启动目标活动节点
-                .execute();
-
-        return ResultFactory.buildSuccessResult(null);
-    }
-    private String getInstanceIdForActivity(ActivityInstance tree,String destTaskDefKey){
-
-        return null;
-    }
-
-
 
     //9、流程转发
 
