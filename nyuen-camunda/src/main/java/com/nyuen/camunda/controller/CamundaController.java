@@ -492,7 +492,7 @@ public class CamundaController {
                 .orderByHistoricActivityInstanceStartTime()
                 .desc()
                 .list();
-        return ResultFactory.buildSuccessResult(JSONObject.toJSONString(hiTaskList, SerializerFeature.IgnoreErrorGetter));
+        return ResultFactory.buildSuccessResult(CamundaObjectUtil.objectListToJSONArray(hiTaskList));
     }
     @ApiOperation(value = "根据processInstanceId获取当前待办节点", httpMethod = "GET")
     @GetMapping("/getUnfinishedUserActivity")
@@ -521,18 +521,17 @@ public class CamundaController {
     @ApiOperation(value = "根据procInstId获取渲染节点", httpMethod = "GET")
     @GetMapping("/getRenderingActivity")
     public Result getRenderingActivity(@RequestParam("procInstId") String procInstId) {
-        List<HistoricActivityInstance> finishedList = historyService.createHistoricActivityInstanceQuery()
+        List<HistoricActivityInstance> hiTaskList = historyService.createHistoricActivityInstanceQuery()
                 .processInstanceId(procInstId)
-                .finished()
                 .orderByHistoricActivityInstanceStartTime()
                 .asc()
                 .list();
         List<HistoricActivityInstance> resultList = new ArrayList<>();
         //获取最后一个节点，即待办节点
-        HistoricActivityInstance todoHai = finishedList.get(finishedList.size()-1);
+        HistoricActivityInstance todoHai = hiTaskList.get(hiTaskList.size()-1);
         //返回到待办节点之前的顺序不重复的节点list
         LinkedHashMap<String,Object> linkedHashMap = new LinkedHashMap();
-        for(HistoricActivityInstance hai : finishedList){
+        for(HistoricActivityInstance hai : hiTaskList){
             linkedHashMap.put(hai.getActivityId(),hai);
         }
         ListIterator<Map.Entry<String,Object>> li = new ArrayList<>(linkedHashMap.entrySet()).listIterator();
