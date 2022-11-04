@@ -3,14 +3,11 @@ package com.nyuen.camunda.controller;
 import com.nyuen.camunda.domain.vo.RejectBean;
 import com.nyuen.camunda.result.Result;
 import com.nyuen.camunda.result.ResultFactory;
-import com.nyuen.camunda.utils.CamundaObjectUtil;
 import io.swagger.annotations.ApiOperation;
 import org.camunda.bpm.engine.HistoryService;
 import org.camunda.bpm.engine.RuntimeService;
 import org.camunda.bpm.engine.TaskService;
 import org.camunda.bpm.engine.history.HistoricActivityInstance;
-import org.camunda.bpm.engine.history.HistoricVariableInstance;
-import org.camunda.bpm.engine.impl.persistence.entity.HistoricActivityInstanceEntity;
 import org.camunda.bpm.engine.runtime.ActivityInstance;
 import org.camunda.bpm.engine.task.Task;
 import org.springframework.web.bind.annotation.*;
@@ -140,6 +137,7 @@ public class ModifyController {
     }
 
     /**
+     * 获取上一节点信息
      * 分两种情况：
      * 1、当前节点不在历史节点里
      * 2、当前节点在历史节点里

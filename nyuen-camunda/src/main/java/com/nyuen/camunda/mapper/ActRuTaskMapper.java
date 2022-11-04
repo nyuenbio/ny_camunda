@@ -63,4 +63,6 @@ public interface ActRuTaskMapper {
     List<TodoTask> getTodoTaskList(Map<String,Object> params);
     int getTodoTaskTotal(Map<String,Object> params);
 
+    List<TodoTask> getTodoTaskByCondition(Map<String,Object> params);
+
 }

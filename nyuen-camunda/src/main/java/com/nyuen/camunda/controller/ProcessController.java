@@ -1,31 +1,39 @@
 package com.nyuen.camunda.controller;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.nyuen.camunda.domain.vo.SampleRowAndCell;
 import com.nyuen.camunda.domain.vo.SimpleQueryBean;
+import com.nyuen.camunda.domain.vo.TodoTask;
 import com.nyuen.camunda.result.Result;
 import com.nyuen.camunda.result.ResultFactory;
 import com.nyuen.camunda.service.MyTaskService;
+import com.nyuen.camunda.utils.ExcelUtil;
 import com.nyuen.camunda.utils.ObjectUtil;
 import com.nyuen.camunda.utils.PageConvert;
 import com.nyuen.camunda.vo.AttachmentVo;
 import com.nyuen.camunda.vo.DealTaskBean;
 import io.swagger.annotations.ApiOperation;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.camunda.bpm.engine.FormService;
 import org.camunda.bpm.engine.IdentityService;
 import org.camunda.bpm.engine.TaskService;
 import org.camunda.bpm.engine.task.Attachment;
+import org.camunda.commons.utils.StringUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.*;
+import java.util.*;
 
 /**
  * TODO
@@ -60,6 +68,52 @@ public class ProcessController {
         PageConvert.currentPageConvertStartIndex(params);
         return ResultFactory.buildSuccessResult(myTaskService.getSampleProcessList(params));
     }
+
+    //通过上传解析Excel表格，处理流程节点并添加流程变量
+    @PostMapping("/dealExtractionByExcel")
+    public Result dealExtractionByExcel(MultipartFile multipartFile, String nodeName, String assignee,String procDefId)
+            throws IOException, InvalidFormatException {
+        if(StringUtils.isEmpty(assignee)){
+            return ResultFactory.buildFailResult("当前用户id不能为空");
+        }
+        // 上传抽提数据,或上传下机数据
+        //添加流程变量
+        // todo
+        Result result = ExcelUtil.dealExtractionByExcel(multipartFile);
+        if(200 != result.getCode()){
+            return result;
+        }
+        List<SampleRowAndCell> sampleRowAndCellList = (List<SampleRowAndCell>) result.getData();
+        StringBuilder sb = null;
+        for(SampleRowAndCell sampleRowAndCell : sampleRowAndCellList){
+            //添加审批人
+            if(StringUtils.isNotEmpty(assignee)) {
+                identityService.setAuthenticatedUserId(assignee);
+            }
+            // 存储流程变量
+            Map<String,Object> variables = new HashMap<>();
+            variables.put("节点名称", nodeName == null ?"":nodeName);
+            variables.put("样本编号", sampleRowAndCell.getSampleInfo());
+            variables.put("数据", JSON.toJSON(sampleRowAndCell.getSampleRowList()));
+            Map<String,Object> params = new HashMap<>();
+            params.put("assignee",assignee);
+            params.put("sampleInfo", sampleRowAndCell.getSampleInfo());
+            params.put("procDefId",procDefId);
+            List<TodoTask> todoTaskList = myTaskService.getTodoTaskByCondition(params);
+            if(todoTaskList.size() == 0){
+                sb.append(sampleRowAndCell.getSampleInfo()).append(" , ");
+            }
+            if(todoTaskList.size() > 1){
+                return ResultFactory.buildFailResult("样本 "+sampleRowAndCell.getSampleInfo()+" 存在两条待办流程，无法匹配！");
+            }
+            String taskId = todoTaskList.get(0).getId();
+            // 根据样本编号（businessKey)和assignee找到taskId
+            taskService.setVariables(taskId,variables);
+            taskService.complete(taskId);
+        }
+        return ResultFactory.buildSuccessResult(sb == null ? null : sb.toString()+"以上样本匹配失败,原因：您的待办中无此样本");
+    }
+
 
     @ApiOperation(value = "处理流程节点(带附件的节点)",httpMethod = "POST")
     @PostMapping("/dealTask")

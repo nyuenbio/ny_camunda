@@ -37,7 +37,7 @@ public class FileController {
 
     @ApiOperation(value = "上传文件,返回文件路径url", httpMethod = "POST")
     @PostMapping("/uploadFile")
-    public Result uploadZhxOriginData(@RequestBody MultipartFile multipartFile, HttpServletRequest request) {
+    public Result uploadFile(@RequestBody MultipartFile multipartFile) {
         // 上传文件到服务器
         String filePath = null;
         String originalFilename;
@@ -60,4 +60,7 @@ public class FileController {
         }
         return ResultFactory.buildSuccessResult(readPath);
     }
+
+
+
 }

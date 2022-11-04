@@ -52,5 +52,10 @@ public class MyTaskServiceImpl implements MyTaskService {
         return new PageBean(total, actHiProcinstList);
     }
 
+    @Override
+    public List<TodoTask> getTodoTaskByCondition(Map<String, Object> params) {
+        return actRuTaskMapper.getTodoTaskByCondition(params);
+    }
+
 
 }

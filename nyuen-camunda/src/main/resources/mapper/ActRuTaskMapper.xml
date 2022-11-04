@@ -376,5 +376,49 @@
         </if>
   </select>
 
+  <!--条件查询我的待办任务-->
+  <select id="getTodoTaskByCondition" parameterType="java.util.HashMap" resultMap="TodoResultMap">
+    SELECT DISTINCT
+    RES.REV_ ,
+    HIP.BUSINESS_KEY_,
+    DEF.NAME_ as procDefName,
+    RES.ID_ ,
+    RES.NAME_,
+    RES.PARENT_TASK_ID_,
+    RES.DESCRIPTION_,
+    RES.PRIORITY_,
+    RES.CREATE_TIME_,
+    RES.OWNER_,
+    RES.ASSIGNEE_,
+    RES.DELEGATION_,
+    RES.EXECUTION_ID_,
+    RES.PROC_INST_ID_,
+    RES.PROC_DEF_ID_,
+    RES.CASE_EXECUTION_ID_,
+    RES.CASE_INST_ID_,
+    RES.CASE_DEF_ID_,
+    RES.TASK_DEF_KEY_,
+    RES.DUE_DATE_,
+    RES.FOLLOW_UP_DATE_,
+    RES.SUSPENSION_STATE_,
+    RES.TENANT_ID_
+    FROM
+    ACT_RU_TASK RES
+    LEFT JOIN act_hi_procinst HIP on RES.PROC_INST_ID_ = HIP.PROC_INST_ID_
+    LEFT JOIN act_re_procdef DEF on RES.PROC_DEF_ID_ = DEF.ID_
+    WHERE
+        RES.ASSIGNEE_ = #{assignee,jdbcType=VARCHAR}
+    <if test="sampleInfo != null and sampleInfo != ''">
+      and HIP.BUSINESS_KEY_ =#{sampleInfo,jdbcType=VARCHAR}
+    </if>
+    <if test="procDefId != null and procDefId != ''">
+      and RES.PROC_DEF_ID_ =#{procDefId,jdbcType=VARCHAR}
+    </if>
+    <if test="nodeName != null and nodeName != ''">
+      and RES.NAME_ =#{nodeName,jdbcType=VARCHAR}
+    </if>
+    ORDER BY
+    RES.CREATE_TIME_ DESC
+  </select>
 
 </mapper>
