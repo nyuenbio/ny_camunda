@@ -69,49 +69,61 @@ public class ProcessController {
         return ResultFactory.buildSuccessResult(myTaskService.getSampleProcessList(params));
     }
 
-    //通过上传解析Excel表格，处理流程节点并添加流程变量
-    @PostMapping("/dealExtractionByExcel")
-    public Result dealExtractionByExcel(MultipartFile multipartFile, String nodeName, String assignee,String procDefId)
+    /**
+     * 通过上传解析Excel表格，处理流程节点并添加流程变量
+     * @param multipartFile 表格文件
+     * @param assignee 当前用户id
+     * @param procDefId 流程模板id
+     * @param nodeName 节点名称
+     * @return 处理样本结果
+     * @throws IOException IOException
+     * @throws InvalidFormatException InvalidFormatException
+     */
+    @ApiOperation(value = "通过上传解析Excel表格，处理流程节点并添加流程变量", httpMethod = "POST")
+    @PostMapping("/batchDealNodeByExcel")
+    public Result batchDealNodeByExcel(MultipartFile multipartFile, String assignee, String procDefId, String nodeName)
             throws IOException, InvalidFormatException {
         if(StringUtils.isEmpty(assignee)){
             return ResultFactory.buildFailResult("当前用户id不能为空");
         }
+        if(StringUtils.isEmpty(nodeName)){
+            return ResultFactory.buildFailResult("节点名称不能为空");
+        }
         // 上传抽提数据,或上传下机数据
-        //添加流程变量
-        // todo
         Result result = ExcelUtil.dealExtractionByExcel(multipartFile);
         if(200 != result.getCode()){
             return result;
         }
         List<SampleRowAndCell> sampleRowAndCellList = (List<SampleRowAndCell>) result.getData();
-        StringBuilder sb = null;
+        StringBuilder sb = new StringBuilder();
         for(SampleRowAndCell sampleRowAndCell : sampleRowAndCellList){
             //添加审批人
             if(StringUtils.isNotEmpty(assignee)) {
                 identityService.setAuthenticatedUserId(assignee);
             }
-            // 存储流程变量
-            Map<String,Object> variables = new HashMap<>();
-            variables.put("节点名称", nodeName == null ?"":nodeName);
-            variables.put("样本编号", sampleRowAndCell.getSampleInfo());
-            variables.put("数据", JSON.toJSON(sampleRowAndCell.getSampleRowList()));
+            // 根据样本编号（businessKey)、procDefId、nodeName和assignee找到taskId
             Map<String,Object> params = new HashMap<>();
             params.put("assignee",assignee);
             params.put("sampleInfo", sampleRowAndCell.getSampleInfo());
             params.put("procDefId",procDefId);
+            params.put("nodeName",nodeName);
             List<TodoTask> todoTaskList = myTaskService.getTodoTaskByCondition(params);
             if(todoTaskList.size() == 0){
                 sb.append(sampleRowAndCell.getSampleInfo()).append(" , ");
-            }
-            if(todoTaskList.size() > 1){
+            }else if(todoTaskList.size() > 1){
                 return ResultFactory.buildFailResult("样本 "+sampleRowAndCell.getSampleInfo()+" 存在两条待办流程，无法匹配！");
+            }else {
+                String taskId = todoTaskList.get(0).getId();
+                // 添加流程变量
+                Map<String, Object> variables = new HashMap<>();
+                variables.put("节点名称", nodeName);
+                variables.put("样本编号", sampleRowAndCell.getSampleInfo());
+                variables.put("表格解析数据", JSON.toJSON(sampleRowAndCell.getSampleRowList()));
+                taskService.setVariables(taskId, variables);
+                taskService.complete(taskId);
             }
-            String taskId = todoTaskList.get(0).getId();
-            // 根据样本编号（businessKey)和assignee找到taskId
-            taskService.setVariables(taskId,variables);
-            taskService.complete(taskId);
         }
-        return ResultFactory.buildSuccessResult(sb == null ? null : sb.toString()+"以上样本匹配失败,原因：您的待办中无此样本");
+        return ResultFactory.buildSuccessResult("".equals(sb.toString().trim()) ? null : sb.toString()+"以上样本匹配失败,原因：您的待办节点中无此样本");
     }
 
 

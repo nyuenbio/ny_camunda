@@ -7,10 +7,7 @@ import com.nyuen.camunda.result.Result;
 import com.nyuen.camunda.result.ResultFactory;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -60,16 +57,21 @@ public class ExcelUtil {
             if (row != null) {
                 int firstCellIndex = row.getFirstCellNum();
                 int lastCellIndex = row.getLastCellNum();
-                // 又一个小细节  ==> firstCellIndex+1
+                // 又一个小细节  ==> firstCellIndex+1 第一列是样本编号
                 for (int cIndex = firstCellIndex+1 ; cIndex < lastCellIndex; cIndex++) {   //遍历列
                     Cell cell = row.getCell(cIndex);
                     if (cell != null) {
                         //System.out.println(cell.toString());
-                        rowCellList.add(cell.toString());
+                        cell.setCellType(CellType.STRING);
+                        rowCellList.add(cell.toString().trim());
                     }
                 }
             }
-            SampleRow sampleRow = new SampleRow(row.getCell(0).toString(), rowCellList);
+            if(row == null || row.getCell(0) == null){
+                return ResultFactory.buildFailResult("第一列样本编号不能为空！");
+            }
+            row.getCell(0).setCellType(CellType.STRING);
+            SampleRow sampleRow = new SampleRow(row.getCell(0).getStringCellValue().trim(), rowCellList);
             dataList.add(sampleRow);
         }
         return ResultFactory.buildSuccessResult(mergeDataBySampleInfo(dataList));
@@ -87,6 +89,8 @@ public class ExcelUtil {
             }
             os.close();
             ins.close();
+            // springboot自动删除
+            //file.deleteOnExit();//删除临时文件
         } catch (Exception e) {
             e.printStackTrace();
         }
