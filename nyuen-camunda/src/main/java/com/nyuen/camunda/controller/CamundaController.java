@@ -7,7 +7,7 @@ import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.nyuen.camunda.common.PageBean;
 import com.nyuen.camunda.domain.po.ActIdGroup;
 import com.nyuen.camunda.domain.po.ActIdUser;
-import com.nyuen.camunda.domain.vo.SimpleQueryBean;
+import com.nyuen.camunda.domain.vo.*;
 import com.nyuen.camunda.result.Result;
 import com.nyuen.camunda.result.ResultFactory;
 import com.nyuen.camunda.service.MyIdentityService;
@@ -15,7 +15,7 @@ import com.nyuen.camunda.service.MyTaskService;
 import com.nyuen.camunda.utils.CamundaObjectUtil;
 import com.nyuen.camunda.utils.ObjectUtil;
 import com.nyuen.camunda.utils.PageConvert;
-import com.nyuen.camunda.vo.*;
+import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import org.apache.commons.lang3.StringUtils;
@@ -29,7 +29,6 @@ import org.camunda.bpm.engine.impl.persistence.entity.UserEntity;
 import org.camunda.bpm.engine.repository.Deployment;
 import org.camunda.bpm.engine.repository.DeploymentBuilder;
 import org.camunda.bpm.engine.repository.ProcessDefinition;
-import org.camunda.bpm.engine.runtime.ActivityInstance;
 import org.camunda.bpm.engine.task.Task;
 import org.camunda.commons.utils.IoUtil;
 import org.springframework.web.bind.annotation.*;
@@ -39,7 +38,6 @@ import springfox.documentation.annotations.ApiIgnore;
 import javax.annotation.Resource;
 import java.io.*;
 import java.util.*;
-import java.util.stream.Collectors;
 
 
 /**
@@ -49,6 +47,7 @@ import java.util.stream.Collectors;
  * @description Demo Controller
  * @date 2022/7/26
  */
+@Api(tags = "主要操作控制类")
 @RestController
 @RequestMapping("/ny")
 public class CamundaController {
@@ -92,6 +91,7 @@ public class CamundaController {
                 .orderByDeploymentTime()
                 .desc()
                 .list();
+
         return ResultFactory.buildSuccessResult(JSONArray.toJSONString(list,SerializerFeature.IgnoreErrorGetter));
         //return JSONArray.toJSONString(list,SerializerFeature.IgnoreErrorGetter);
     }
@@ -159,6 +159,7 @@ public class CamundaController {
         List<HistoricVariableInstance> hviList2 = historyService.createHistoricVariableInstanceQuery()
                 .processInstanceIdIn(procInstId)
                 .list();
+
         return ResultFactory.buildSuccessResult(CamundaObjectUtil.objectListToJSONArray(hviList2));
     }
     @ApiOperation(value = "根据taskId获取流程变量",httpMethod = "GET")
@@ -168,7 +169,12 @@ public class CamundaController {
         List<HistoricVariableInstance> hviList = historyService.createHistoricVariableInstanceQuery()
                 .taskIdIn(taskId)
                 .list();
-        return ResultFactory.buildSuccessResult(CamundaObjectUtil.objectListToJSONArray(hviList));
+        List<MyVariable> result = new ArrayList<>();
+        for(HistoricVariableInstance h: hviList){
+            MyVariable myVariable = new MyVariable(h.getName(),h.getVariableTypeName(),h.getTypedValue().getValue());
+            result.add(myVariable);
+        }
+        return ResultFactory.buildSuccessResult(result);
     }
 
     /**
@@ -260,6 +266,18 @@ public class CamundaController {
         runtimeService.startProcessInstanceById(startProcessBean.getProcDefId(),
                 startProcessBean.getBusinessKey(),startProcessBean.getVariables());
 
+        return ResultFactory.buildSuccessResult(null);
+    }
+
+    @ApiOperation(value = "批量开启流程",httpMethod = "POST")
+    @PostMapping("/batchStartProcess")
+    public Result batchStartProcess(@RequestBody BatchStartProcessBean batchStartProcessBean){
+        String initiator = batchStartProcessBean.getInitiator();
+        String procDefId = batchStartProcessBean.getProcDefId();
+        for(String businessKey : batchStartProcessBean.getBusinessKeyList()) {
+            identityService.setAuthenticatedUserId(initiator);
+            runtimeService.startProcessInstanceById(procDefId, businessKey);
+        }
         return ResultFactory.buildSuccessResult(null);
     }
 
