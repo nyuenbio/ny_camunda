@@ -1,38 +1,35 @@
 package com.nyuen.camunda.controller;
 
 import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
+import com.nyuen.camunda.domain.po.ActGeBytearray;
 import com.nyuen.camunda.domain.vo.SampleRowAndCell;
 import com.nyuen.camunda.domain.vo.SimpleQueryBean;
 import com.nyuen.camunda.domain.vo.TodoTask;
+import com.nyuen.camunda.mapper.ActGeBytearrayMapper;
 import com.nyuen.camunda.result.Result;
 import com.nyuen.camunda.result.ResultFactory;
 import com.nyuen.camunda.service.MyTaskService;
 import com.nyuen.camunda.utils.ExcelUtil;
 import com.nyuen.camunda.utils.ObjectUtil;
 import com.nyuen.camunda.utils.PageConvert;
-import com.nyuen.camunda.vo.AttachmentVo;
-import com.nyuen.camunda.vo.DealTaskBean;
+import com.nyuen.camunda.domain.vo.AttachmentVo;
+import com.nyuen.camunda.domain.vo.DealTaskBean;
+import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.camunda.bpm.engine.FormService;
 import org.camunda.bpm.engine.IdentityService;
+import org.camunda.bpm.engine.ProcessEngine;
+import org.camunda.bpm.engine.RepositoryService;
 import org.camunda.bpm.engine.TaskService;
 import org.camunda.bpm.engine.task.Attachment;
-import org.camunda.commons.utils.StringUtil;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 /**
@@ -42,6 +39,7 @@ import java.util.*;
  * @description
  * @date 2022/10/24
  */
+@Api(tags = "其他流程操作控制类")
 @RestController
 @RequestMapping("/process")
 public class ProcessController {
@@ -51,6 +49,12 @@ public class ProcessController {
     private TaskService taskService;
     @Resource
     private IdentityService identityService;
+    @Resource
+    private RepositoryService repositoryService;
+    @Resource
+    private ActGeBytearrayMapper geBytearrayMapper;
+    @Resource
+    private ProcessEngine processEngine;
 
 
 
@@ -81,7 +85,8 @@ public class ProcessController {
      */
     @ApiOperation(value = "通过上传解析Excel表格，处理流程节点并添加流程变量", httpMethod = "POST")
     @PostMapping("/batchDealNodeByExcel")
-    public Result batchDealNodeByExcel(MultipartFile multipartFile, String assignee, String procDefId, String nodeName)
+    public Result batchDealNodeByExcel(MultipartFile multipartFile, @ApiParam("当前登录人id") String assignee,
+                                       String procDefId,@ApiParam("节点名称") String nodeName)
             throws IOException, InvalidFormatException {
         if(StringUtils.isEmpty(assignee)){
             return ResultFactory.buildFailResult("当前用户id不能为空");
@@ -116,16 +121,28 @@ public class ProcessController {
                 String taskId = todoTaskList.get(0).getId();
                 // 添加流程变量
                 Map<String, Object> variables = new HashMap<>();
-                variables.put("节点名称", nodeName);
-                variables.put("样本编号", sampleRowAndCell.getSampleInfo());
-                variables.put("表格解析数据", JSON.toJSON(sampleRowAndCell.getSampleRowList()));
-                taskService.setVariables(taskId, variables);
+                //variables.put("节点名称", nodeName);
+                //variables.put("样本编号", sampleRowAndCell.getSampleInfo());
+                variables.put(nodeName+"表格数据", JSON.toJSON(sampleRowAndCell.getSampleRowList()));
+                taskService.setVariablesLocal(taskId, variables);
                 taskService.complete(taskId);
             }
         }
-        return ResultFactory.buildSuccessResult("".equals(sb.toString().trim()) ? null : sb.toString()+"以上样本匹配失败,原因：您的待办节点中无此样本");
+        return ResultFactory.buildResult(200,"".equals(sb.toString().trim()) ? "全部处理完成" : sb.toString()+"以上样本匹配失败,原因：您的待办节点中无此样本",null);
     }
 
+    @GetMapping("/testData")
+    public byte[] testData(String  id) throws IOException {
+        ActGeBytearray actGeBytearray = geBytearrayMapper.selectByPrimaryKey(id);
+        InputStream is = new ByteArrayInputStream(actGeBytearray.getBytes());
+        ByteArrayOutputStream swapStream = new ByteArrayOutputStream();
+        byte[] buff = new byte[1024];
+        int rc;
+        while ((rc = is.read(buff, 0, 1024)) > 0) {
+            swapStream.write(buff, 0, rc);
+        }
+        return swapStream.toByteArray();
+    }
 
     @ApiOperation(value = "处理流程节点(带附件的节点)",httpMethod = "POST")
     @PostMapping("/dealTask")
@@ -191,6 +208,42 @@ public class ProcessController {
 
         return resultList;
     }
+
+    public static void main(String[] args) throws IOException {
+//        String s = "2.36";
+//        List<String> l1 = new ArrayList<>();
+//        l1.add(s);
+//        List<List<String>> l2 = new ArrayList<>();
+//        l2.add(l1);
+//        Object obj = JSON.toJSON(l2);
+//        System.out.println("obj          =>   "+obj.toString());
+//        String str2 = Base64.getEncoder().encodeToString(obj.toString().getBytes());//"W1siMi4zNiJdXQ==";
+        //System.out.println("objToBase64  =>    "+str2);
+
+        String str = "rO0ABXNyAB5jb20uYWxpYmFiYS5mYXN0anNvbi5KU09OQXJyYXkAAAAAAAAAAQIAAUwABGxpc3R0ABBMamF2YS91dGlsL0xpc3Q7eHBzcgATamF2YS51dGlsLkFycmF5TGlzdHiB0h2Zx2GdAwABSQAEc2l6ZXhwAAAAAXcEAAAAAXNxAH4AAHNxAH4AAwAAAAF3BAAAAAF0AAQ2LjY4eHg=";
+        System.out.println("str          =>    "+str);
+        byte[] bytes = Base64.getDecoder().decode(str.getBytes(StandardCharsets.ISO_8859_1));
+        System.out.println("byte[]       =>    "+bytes);
+        String decode = new String(bytes, StandardCharsets.ISO_8859_1);
+
+        String f = JSON.toJSONString(decode);
+        System.out.println("decode       =>    "+decode);
+        //==========================================================================
+
+
+
+        //===========================================================================
+        InputStream is = new ByteArrayInputStream(bytes);
+        ByteArrayOutputStream swapStream = new ByteArrayOutputStream();
+        byte[] buff = new byte[1024];
+        int rc;
+        while ((rc = is.read(buff, 0, 1024)) > 0) {
+            swapStream.write(buff, 0, rc);
+        }
+        byte[] result = swapStream.toByteArray();
+        System.out.println(result);
+    }
+
 
 
 }

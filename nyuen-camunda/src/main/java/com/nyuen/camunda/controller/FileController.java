@@ -3,6 +3,7 @@ package com.nyuen.camunda.controller;
 import com.nyuen.camunda.result.Result;
 import com.nyuen.camunda.result.ResultFactory;
 import com.nyuen.camunda.utils.DateUtil;
+import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +26,7 @@ import java.util.Date;
  * @description
  * @date 2022/10/25
  */
+@Api(tags = "文件操作控制类")
 @RestController
 @RequestMapping("/file")
 public class FileController {

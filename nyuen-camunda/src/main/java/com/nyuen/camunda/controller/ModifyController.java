@@ -3,6 +3,7 @@ package com.nyuen.camunda.controller;
 import com.nyuen.camunda.domain.vo.RejectBean;
 import com.nyuen.camunda.result.Result;
 import com.nyuen.camunda.result.ResultFactory;
+import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.camunda.bpm.engine.HistoryService;
 import org.camunda.bpm.engine.RuntimeService;
@@ -22,6 +23,7 @@ import java.util.*;
  * @description
  * @date 2022/10/31
  */
+@Api(tags = "流程更改控制类")
 @RestController
 @RequestMapping("/modify")
 public class ModifyController {
