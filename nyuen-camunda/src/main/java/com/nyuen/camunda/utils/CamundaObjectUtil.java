@@ -1,5 +1,6 @@
 package com.nyuen.camunda.utils;
 
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 
@@ -22,5 +23,10 @@ public class CamundaObjectUtil {
     public static List objectListToJSONArray(Object objectList, Class clazz){
         String str = JSONArray.toJSONString(objectList, SerializerFeature.IgnoreErrorGetter);
         return JSONArray.parseArray(str,clazz);
+    }
+
+    public static JSON objectToJSON(Object object){
+        String str = JSON.toJSONString(object, SerializerFeature.IgnoreErrorGetter);
+        return JSON.parseObject(str);
     }
 }

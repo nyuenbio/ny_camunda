@@ -362,6 +362,7 @@
         </if>
     ORDER BY
         RES.CREATE_TIME_ DESC
+    LIMIT #{startIndex},#{pageSize}
   </select>
   <select id="getTodoTaskTotal" parameterType="java.util.HashMap" resultType="java.lang.Integer">
     SELECT count(DISTINCT RES.ID_)

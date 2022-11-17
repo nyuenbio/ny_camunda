@@ -1,4 +1,4 @@
-package com.nyuen.camunda.vo;
+package com.nyuen.camunda.domain.vo;
 
 import lombok.Data;
 
