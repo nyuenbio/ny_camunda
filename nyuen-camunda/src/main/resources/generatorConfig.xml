@@ -53,13 +53,13 @@
                enableDeleteByExample="false"
                enableSelectByExample="false" enableUpdateByExample="false">
         </table>
--->
+
         <table tableName="act_hi_detail" domainObjectName="ActHiDetail" enableCountByExample="false"
                enableDeleteByExample="false"
                enableSelectByExample="false" enableUpdateByExample="false">
 
         </table>
-<!--
+
         <table tableName="act_hi_identitylink" domainObjectName="ActHiIdentitylink" enableCountByExample="false" enableDeleteByExample="false"
                enableSelectByExample="false" enableUpdateByExample="false">
         </table>
@@ -123,12 +123,15 @@
 
         <table tableName="act_ru_task" domainObjectName="ActRuTask" enableCountByExample="false" enableDeleteByExample="false"
                enableSelectByExample="false" enableUpdateByExample="false" selectByExampleQueryId="false">
-        </table>-->
+        </table>
 
         <table tableName="act_ru_variable" domainObjectName="ActRuVariable" enableCountByExample="false" enableDeleteByExample="false"
                enableSelectByExample="false" enableUpdateByExample="false" selectByExampleQueryId="false">
         </table>
-
+        -->
+        <table tableName="experiment_data" domainObjectName="ExperimentData" enableCountByExample="false" enableDeleteByExample="false"
+               enableSelectByExample="false" enableUpdateByExample="false" selectByExampleQueryId="false">
+        </table>
 
     </context>
 </generatorConfiguration>

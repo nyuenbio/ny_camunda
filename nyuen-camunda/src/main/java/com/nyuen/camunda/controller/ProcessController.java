@@ -2,18 +2,17 @@ package com.nyuen.camunda.controller;
 
 import com.alibaba.fastjson.JSON;
 import com.nyuen.camunda.domain.po.ActGeBytearray;
-import com.nyuen.camunda.domain.vo.SampleRowAndCell;
-import com.nyuen.camunda.domain.vo.SimpleQueryBean;
-import com.nyuen.camunda.domain.vo.TodoTask;
+import com.nyuen.camunda.domain.po.ExperimentData;
+import com.nyuen.camunda.domain.vo.*;
 import com.nyuen.camunda.mapper.ActGeBytearrayMapper;
 import com.nyuen.camunda.result.Result;
 import com.nyuen.camunda.result.ResultFactory;
+import com.nyuen.camunda.service.ExperimentDataService;
 import com.nyuen.camunda.service.MyTaskService;
 import com.nyuen.camunda.utils.ExcelUtil;
+import com.nyuen.camunda.utils.FileUtil;
 import com.nyuen.camunda.utils.ObjectUtil;
 import com.nyuen.camunda.utils.PageConvert;
-import com.nyuen.camunda.domain.vo.AttachmentVo;
-import com.nyuen.camunda.domain.vo.DealTaskBean;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
@@ -24,6 +23,7 @@ import org.camunda.bpm.engine.ProcessEngine;
 import org.camunda.bpm.engine.RepositoryService;
 import org.camunda.bpm.engine.TaskService;
 import org.camunda.bpm.engine.task.Attachment;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -31,6 +31,7 @@ import javax.annotation.Resource;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * TODO
@@ -54,7 +55,12 @@ public class ProcessController {
     @Resource
     private ActGeBytearrayMapper geBytearrayMapper;
     @Resource
-    private ProcessEngine processEngine;
+    private ExperimentDataService experimentDataService;
+
+    @Value("${file.saveRootPath}")
+    private String saveRootPath;
+    @Value("${file.readRootPath}")
+    private String readRootPath;
 
 
 
@@ -95,11 +101,90 @@ public class ProcessController {
             return ResultFactory.buildFailResult("节点名称不能为空");
         }
         // 上传抽提数据,或上传下机数据
-        Result result = ExcelUtil.dealExtractionByExcel(multipartFile);
-        if(200 != result.getCode()){
-            return result;
+        Result result1 = ExcelUtil.dealExtractionByExcel(multipartFile);
+        if(200 != result1.getCode()){
+            return result1;
         }
-        List<SampleRowAndCell> sampleRowAndCellList = (List<SampleRowAndCell>) result.getData();
+        // 得到相同样本编号归类后的Excel表格数据
+        List<SampleRowAndCell> sampleRowAndCellList = (List<SampleRowAndCell>) result1.getData();
+        // 1、校验表格 V3版本规则
+        Result checkResult = experimentDataCheckV3(sampleRowAndCellList, nodeName);
+        if(200 != checkResult.getCode()){
+            return checkResult;
+        }
+        // 2、存储Excel文件
+        String fileReadPath = FileUtil.uploadFile(multipartFile,saveRootPath,readRootPath);
+        ExperimentData experimentData = new ExperimentData();
+        experimentData.setFileName(multipartFile.getOriginalFilename());
+        experimentData.setUrl(fileReadPath);
+        experimentData.setCreateUser(assignee);
+        experimentData.setCreateTime(new Date());
+        experimentDataService.addExperimentData(experimentData);
+        // 3、处理流程节点
+        return dealTaskNodeByExcel(sampleRowAndCellList,assignee,procDefId,nodeName);
+    }
+
+    private Result experimentDataCheckV3(List<SampleRowAndCell> sampleRowAndCellList,String nodeName){
+        if(!StringUtils.equalsIgnoreCase(nodeName.trim(),"下机")){
+            return ResultFactory.buildSuccessResult(null);
+        }
+        List<String> gelGenoTypeArray = Arrays.asList("SS", "SL", "SXL", "LL", "LXL");
+        List<String> descriptionArray = Arrays.asList("D.LOW Probability", "N.No-Alleles");
+        // 校验规则
+        // 1.每个样本现在是91个位点（有漏的点提示）
+        // 2.Methodology-CNV的位点，固定是rs16947(可能会因为下拉导致错误)
+        // 3. SS/SL/SXL/LL/SXL/LXL-对应的Methodology是GEL
+        // 4. Description这一列评级不能出现D.LOW Probability以及N.No-Alleles
+        StringBuilder siteErr = new StringBuilder();
+        List<String> cnvErr = new ArrayList<>();
+        List<String> gelErr = new ArrayList<>();
+        List<String> descriptionErr = new ArrayList<>();
+        List<ExperimentalDataRow> experimentalDataRowList = new ArrayList<>();
+        for(SampleRowAndCell sampleRowAndCell: sampleRowAndCellList){
+            List<List<String>> sampleRowList = sampleRowAndCell.getSampleRowList();
+            for(List<String> rowList : sampleRowList){
+                ExperimentalDataRow dataRow = new ExperimentalDataRow();
+                dataRow.setSampleNum(sampleRowAndCell.getSampleInfo());
+                dataRow.setGenotype(rowList.get(1));
+                dataRow.setSnpId(rowList.get(2));
+                dataRow.setDescription(rowList.get(3));
+                dataRow.setMethodology(rowList.get(5));
+                experimentalDataRowList.add(dataRow);
+            }
+            if(91 != sampleRowList.size()){
+                siteErr.append(sampleRowAndCell.getSampleInfo()).append(" ,");
+            }
+        }
+        experimentalDataRowList.stream().filter(experimentalDataRow -> "CNV".equals(experimentalDataRow.getMethodology()) && !"rs16947".equals(experimentalDataRow.getSnpId()))
+                .collect(Collectors.toList())
+                .stream().map(experimentalDataRow -> {
+                    cnvErr.add(experimentalDataRow.getSampleNum());
+                    return cnvErr;
+                }).collect(Collectors.toList());
+        experimentalDataRowList.stream().filter(experimentalDataRow -> "GEL".equals(experimentalDataRow.getMethodology()) && !(gelGenoTypeArray.indexOf(experimentalDataRow.getGenotype()) >= 0))
+                .collect(Collectors.toList())
+                .stream().map(experimentalDataRow -> {
+                    gelErr.add(experimentalDataRow.getSampleNum());
+                    return gelErr;
+                }).collect(Collectors.toList());
+        experimentalDataRowList.stream().filter(experimentalDataRow -> descriptionArray.indexOf(experimentalDataRow.getDescription()) >= 0)
+                .collect(Collectors.toList())
+                .stream().map(experimentalDataRow -> {
+                    descriptionErr.add(experimentalDataRow.getSampleNum());
+                    return descriptionErr;
+                }).collect(Collectors.toList());
+
+        String result = (siteErr.length()>0?siteErr.append("以上样本位点不为91个！").toString():"")
+                +(cnvErr.size()>0? cnvErr.stream().distinct().collect(Collectors.toList()).toString()+"以上样本存在CNV位点不是rs16947 。":"")
+                +(gelErr.size()>0?gelErr.stream().distinct().collect(Collectors.toList()).toString()+"以上样本存在GEL位点不是SS/SL/SXL/LL/LXL 。":"")
+                +(descriptionErr.size()>0?descriptionErr.stream().distinct().collect(Collectors.toList()).toString()+"以上样本存在description是D.LOW Probability或N.No-Alleles 。":"");
+        if(StringUtils.isEmpty(result)){
+            return ResultFactory.buildSuccessResult(null);
+        }
+        return ResultFactory.buildFailResult(result);
+    }
+
+    private Result dealTaskNodeByExcel(List<SampleRowAndCell> sampleRowAndCellList, String assignee, String procDefId, String nodeName){
         StringBuilder sb = new StringBuilder();
         for(SampleRowAndCell sampleRowAndCell : sampleRowAndCellList){
             //添加审批人
@@ -209,39 +294,48 @@ public class ProcessController {
         return resultList;
     }
 
-    public static void main(String[] args) throws IOException {
-//        String s = "2.36";
-//        List<String> l1 = new ArrayList<>();
-//        l1.add(s);
-//        List<List<String>> l2 = new ArrayList<>();
-//        l2.add(l1);
-//        Object obj = JSON.toJSON(l2);
-//        System.out.println("obj          =>   "+obj.toString());
-//        String str2 = Base64.getEncoder().encodeToString(obj.toString().getBytes());//"W1siMi4zNiJdXQ==";
-        //System.out.println("objToBase64  =>    "+str2);
+    public static void main(String[] args) {
+        List<ExperimentalDataRow> experimentalDataRowList = new ArrayList<>();
+        ExperimentalDataRow dataRow = new ExperimentalDataRow();
+        dataRow.setSampleNum("NY123");
+        dataRow.setGenotype("");
+        dataRow.setSnpId("rs16947");
+        dataRow.setDescription("");
+        dataRow.setMethodology("CNV");
+        experimentalDataRowList.add(dataRow);
+        ExperimentalDataRow dataRow2 = new ExperimentalDataRow();
+        dataRow2.setSampleNum("NY456");
+        dataRow2.setGenotype("");
+        dataRow2.setSnpId("rs16949");
+        dataRow2.setDescription("");
+        dataRow2.setMethodology("CNV");
+        experimentalDataRowList.add(dataRow2);
+        experimentalDataRowList.add(dataRow2);
+        ExperimentalDataRow dataRow3 = new ExperimentalDataRow();
+        dataRow3.setSampleNum("NY123");
+        dataRow3.setGenotype("");
+        dataRow3.setSnpId("rs16950");
+        dataRow3.setDescription("");
+        dataRow3.setMethodology("CNV");
+        experimentalDataRowList.add(dataRow3);
 
-        String str = "rO0ABXNyAB5jb20uYWxpYmFiYS5mYXN0anNvbi5KU09OQXJyYXkAAAAAAAAAAQIAAUwABGxpc3R0ABBMamF2YS91dGlsL0xpc3Q7eHBzcgATamF2YS51dGlsLkFycmF5TGlzdHiB0h2Zx2GdAwABSQAEc2l6ZXhwAAAAAXcEAAAAAXNxAH4AAHNxAH4AAwAAAAF3BAAAAAF0AAQ2LjY4eHg=";
-        System.out.println("str          =>    "+str);
-        byte[] bytes = Base64.getDecoder().decode(str.getBytes(StandardCharsets.ISO_8859_1));
-        System.out.println("byte[]       =>    "+bytes);
-        String decode = new String(bytes, StandardCharsets.ISO_8859_1);
+        List<String> cnvErr = new ArrayList<>();
+//        cnvErr.add("123");
+//        cnvErr.add("123");
+//        cnvErr.add("45 6");
+//        cnvErr.add("45 6");
+//        cnvErr.add("887");
+        experimentalDataRowList.stream().filter(experimentalDataRow -> "CNV".equals(experimentalDataRow.getMethodology()))
+                .collect(Collectors.toList())
+                .stream().map(experimentalDataRow -> {
+            cnvErr.add(experimentalDataRow.getSampleNum());
+            return cnvErr;
+        }).collect(Collectors.toList());
+        List<String> s = cnvErr.stream().distinct().collect(Collectors.toList());
+        System.out.println(s.toString());
 
-        String f = JSON.toJSONString(decode);
-        System.out.println("decode       =>    "+decode);
-        //==========================================================================
 
 
-
-        //===========================================================================
-        InputStream is = new ByteArrayInputStream(bytes);
-        ByteArrayOutputStream swapStream = new ByteArrayOutputStream();
-        byte[] buff = new byte[1024];
-        int rc;
-        while ((rc = is.read(buff, 0, 1024)) > 0) {
-            swapStream.write(buff, 0, rc);
-        }
-        byte[] result = swapStream.toByteArray();
-        System.out.println(result);
     }
 
 
