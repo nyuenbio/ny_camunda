@@ -2,6 +2,8 @@ package com.nyuen.camunda.domain.vo;
 
 import lombok.Data;
 
+import java.util.Date;
+
 /**
  * TODO
  *
@@ -16,5 +18,7 @@ public class SimpleQueryBean {
     private String name;
     private int currentPage;
     private int pageSize;
+    private Date startTime;
+    private Date endTime;
 
 }

@@ -1,6 +1,7 @@
 package com.nyuen.camunda.controller;
 
 import com.alibaba.fastjson.JSON;
+import com.nyuen.camunda.common.PageBean;
 import com.nyuen.camunda.domain.po.ActGeBytearray;
 import com.nyuen.camunda.domain.po.ExperimentData;
 import com.nyuen.camunda.domain.vo.*;
@@ -95,13 +96,16 @@ public class ProcessController {
                                        String procDefId,@ApiParam("节点名称") String nodeName)
             throws IOException, InvalidFormatException {
         if(StringUtils.isEmpty(assignee)){
-            return ResultFactory.buildFailResult("当前用户id不能为空");
+            return ResultFactory.buildFailResult("当前用户不能为空");
         }
         if(StringUtils.isEmpty(nodeName)){
             return ResultFactory.buildFailResult("节点名称不能为空");
         }
+        if(StringUtils.isEmpty(procDefId)){
+            return ResultFactory.buildFailResult("流程不能为空");
+        }
         // 上传抽提数据,或上传下机数据
-        Result result1 = ExcelUtil.dealExtractionByExcel(multipartFile);
+        Result result1 = ExcelUtil.dealDataByExcel(multipartFile);
         if(200 != result1.getCode()){
             return result1;
         }
@@ -112,14 +116,18 @@ public class ProcessController {
         if(200 != checkResult.getCode()){
             return checkResult;
         }
-        // 2、存储Excel文件
-        String fileReadPath = FileUtil.uploadFile(multipartFile,saveRootPath,readRootPath);
+        // 2、存储Excel数据文件
+        //if(StringUtils.equalsIgnoreCase(nodeName.trim(),"下机")) {
+        String fileReadPath = FileUtil.uploadFile(multipartFile, saveRootPath, readRootPath);
         ExperimentData experimentData = new ExperimentData();
+        experimentData.setProcDefId(procDefId);
+        experimentData.setNodeName(nodeName);
         experimentData.setFileName(multipartFile.getOriginalFilename());
         experimentData.setUrl(fileReadPath);
         experimentData.setCreateUser(assignee);
         experimentData.setCreateTime(new Date());
         experimentDataService.addExperimentData(experimentData);
+        //}
         // 3、处理流程节点
         return dealTaskNodeByExcel(sampleRowAndCellList,assignee,procDefId,nodeName);
     }
@@ -292,6 +300,16 @@ public class ProcessController {
         }
 
         return resultList;
+    }
+
+    @ApiOperation(value = "获取下机数据文件列表",httpMethod = "POST")
+    @PostMapping("/getExperimentDataList")
+    public Object getExperimentDataList(@RequestBody SimpleQueryBean sqBean) throws IllegalAccessException {
+        sqBean.setName("下机");
+        Map<String,Object> params = ObjectUtil.objectToMap(sqBean);
+        PageConvert.currentPageConvertStartIndex(params);
+        PageBean pageBean = experimentDataService.getExperimentDataList(params);
+        return ResultFactory.buildSuccessResult(pageBean);
     }
 
     public static void main(String[] args) {

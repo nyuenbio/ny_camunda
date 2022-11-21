@@ -1,6 +1,9 @@
 package com.nyuen.camunda.service;
 
+import com.nyuen.camunda.common.PageBean;
 import com.nyuen.camunda.domain.po.ExperimentData;
+
+import java.util.Map;
 
 /**
  * TODO
@@ -12,5 +15,7 @@ import com.nyuen.camunda.domain.po.ExperimentData;
 public interface ExperimentDataService {
 
     void addExperimentData(ExperimentData experimentData);
+
+    PageBean getExperimentDataList(Map<String,Object> params);
 
 }

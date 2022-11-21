@@ -23,61 +23,7 @@ import java.util.*;
  */
 public class ExcelUtil {
 
-    public static Result dealExtractionByExcel(MultipartFile multipartFile) throws IOException, InvalidFormatException {
-        // 判断文件类型是否是Excel
-        String excelName = multipartFile.getOriginalFilename();
-        if(null == excelName){
-            return ResultFactory.buildFailResult("文件名称不能为空！");
-        }
-        String suffix = excelName.substring(excelName.indexOf(".")+1);
-        if(!"xls".equals(suffix) && !"xlsx".equals(suffix)) {
-            return ResultFactory.buildFailResult("文件类型错误，仅限excel文件");
-        }
-        Workbook wb;
-        //根据文件后缀（xls/xlsx）进行判断
-        File file = multipartFileToFile(multipartFile);
-        if ( "xls".equals(suffix)){
-            FileInputStream fis =  new FileInputStream(file);  //文件流对象
-            wb = new HSSFWorkbook(fis);
-        }else {
-            wb = new XSSFWorkbook(file);
-        }
-        //开始解析
-        Sheet sheet = wb.getSheetAt(0);     //读取sheet 0
-
-        int firstRowIndex = sheet.getFirstRowNum()+1;   //第一行是列名，所以不读
-        int lastRowIndex = sheet.getLastRowNum();
-        //System.out.println("firstRowIndex: "+firstRowIndex);
-        //System.out.println("lastRowIndex: "+lastRowIndex);
-        List<SampleRow> dataList = new ArrayList<>();
-        for(int rIndex = firstRowIndex; rIndex <= lastRowIndex; rIndex++) {   //遍历行
-            //System.out.println("rIndex: " + rIndex);
-            List<String> rowCellList = new ArrayList<>();
-            Row row = sheet.getRow(rIndex);
-            if (row != null) {
-                int firstCellIndex = row.getFirstCellNum();
-                int lastCellIndex = row.getLastCellNum();
-                // 又一个小细节  ==> firstCellIndex+1 第一列是样本编号
-                for (int cIndex = firstCellIndex+1 ; cIndex < lastCellIndex; cIndex++) {   //遍历列
-                    Cell cell = row.getCell(cIndex);
-                    if (cell != null) {
-                        //System.out.println(cell.toString());
-                        cell.setCellType(CellType.STRING);
-                        rowCellList.add(cell.toString().trim());
-                    }
-                }
-            }
-            if(row == null || row.getCell(0) == null){
-                return ResultFactory.buildFailResult("第一列样本编号不能为空！");
-            }
-            row.getCell(0).setCellType(CellType.STRING);
-            SampleRow sampleRow = new SampleRow(row.getCell(0).getStringCellValue().trim(), rowCellList);
-            dataList.add(sampleRow);
-        }
-        return ResultFactory.buildSuccessResult(mergeDataBySampleInfo(dataList));
-    }
-
-    public static Result dealExtractionOrExperimentNodeByExcel(MultipartFile multipartFile,String nodeName) throws IOException, InvalidFormatException {
+    public static Result dealDataByExcel(MultipartFile multipartFile) throws IOException, InvalidFormatException {
         // 判断文件类型是否是Excel
         String excelName = multipartFile.getOriginalFilename();
         if(null == excelName){
