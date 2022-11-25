@@ -196,8 +196,8 @@
     select <include refid="Base_Column_List"></include>
     from experiment_data
     <where>
-      <if test="nodeName != null and nodeName !=''">
-        and node_name = #{nodeName,jdbcType=VARCHAR}
+      <if test="name != null and name !=''">
+        and node_name = #{name,jdbcType=VARCHAR}
       </if>
       <if test="startTime !=null ">
         and DATE_FORMAT(#{create_time}, '%Y-%m-%d %H:%i:%S') &gt;= DATE_FORMAT(#{startTime}, '%Y-%m-%d %H:%i:%S')

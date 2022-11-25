@@ -156,11 +156,17 @@ public class CamundaController {
         //不适用于已办节点
         //TaskFormData tfData = formService.getTaskFormData(taskId);
         // 不适用于待办节点,待办节点本身就还没有变量
-        List<HistoricVariableInstance> hviList2 = historyService.createHistoricVariableInstanceQuery()
+        List<HistoricVariableInstance> hviList = historyService.createHistoricVariableInstanceQuery()
                 .processInstanceIdIn(procInstId)
+                .activityInstanceIdIn(procInstId)
                 .list();
-
-        return ResultFactory.buildSuccessResult(CamundaObjectUtil.objectListToJSONArray(hviList2));
+        //return ResultFactory.buildSuccessResult(CamundaObjectUtil.objectListToJSONArray(hviList));
+        List<MyVariable> result = new ArrayList<>();
+        for(HistoricVariableInstance h: hviList){
+            MyVariable myVariable = new MyVariable(h.getName(),h.getVariableTypeName(),h.getTypedValue().getValue());
+            result.add(myVariable);
+        }
+        return ResultFactory.buildSuccessResult(result);
     }
     @ApiOperation(value = "根据taskId获取流程变量",httpMethod = "GET")
     @GetMapping("/getProcessVariableByTaskId")
@@ -262,6 +268,7 @@ public class CamundaController {
     @ApiOperation(value = "开启流程",httpMethod = "POST")
     @PostMapping("/startProcess")
     public Result startProcess(@RequestBody StartProcessBean startProcessBean){
+        // todo 如果是臻慧选产品，处理套餐与孔位规则
         identityService.setAuthenticatedUserId(startProcessBean.getInitiator());
         runtimeService.startProcessInstanceById(startProcessBean.getProcDefId(),
                 startProcessBean.getBusinessKey(),startProcessBean.getVariables());
@@ -274,9 +281,10 @@ public class CamundaController {
     public Result batchStartProcess(@RequestBody BatchStartProcessBean batchStartProcessBean){
         String initiator = batchStartProcessBean.getInitiator();
         String procDefId = batchStartProcessBean.getProcDefId();
+        Map<String,Object> variables = batchStartProcessBean.getVariables();
         for(String businessKey : batchStartProcessBean.getBusinessKeyList()) {
             identityService.setAuthenticatedUserId(initiator);
-            runtimeService.startProcessInstanceById(procDefId, businessKey);
+            runtimeService.startProcessInstanceById(procDefId, businessKey, variables);
         }
         return ResultFactory.buildSuccessResult(null);
     }

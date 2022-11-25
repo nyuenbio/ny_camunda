@@ -113,7 +113,7 @@ public class ProcessController {
         List<SampleRowAndCell> sampleRowAndCellList = (List<SampleRowAndCell>) result1.getData();
         // 1、校验表格 V3版本规则
         Result checkResult = experimentDataCheckV3(sampleRowAndCellList, nodeName);
-        if(200 != checkResult.getCode()){
+        if(StringUtils.isNotEmpty(checkResult.getMessage())){
             return checkResult;
         }
         // 2、存储Excel数据文件
@@ -187,9 +187,9 @@ public class ProcessController {
                 +(gelErr.size()>0?gelErr.stream().distinct().collect(Collectors.toList()).toString()+"以上样本存在GEL位点不是SS/SL/SXL/LL/LXL 。":"")
                 +(descriptionErr.size()>0?descriptionErr.stream().distinct().collect(Collectors.toList()).toString()+"以上样本存在description是D.LOW Probability或N.No-Alleles 。":"");
         if(StringUtils.isEmpty(result)){
-            return ResultFactory.buildSuccessResult(null);
+            return ResultFactory.buildResult(200,"",null);
         }
-        return ResultFactory.buildFailResult(result);
+        return ResultFactory.buildResult(200,result,null);
     }
 
     private Result dealTaskNodeByExcel(List<SampleRowAndCell> sampleRowAndCellList, String assignee, String procDefId, String nodeName){
