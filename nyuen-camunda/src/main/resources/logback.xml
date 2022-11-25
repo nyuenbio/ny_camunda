@@ -18,7 +18,7 @@
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <!--<FileNamePattern>D:/test/%d{yyyy-MM-dd}/debug.%d{yyyy-MM-dd}.log
             </FileNamePattern>-->
-            <FileNamePattern>/share_data/clin_result/clin_epilepsy_result/it_project_test/log_camunda/%d{yyyy-MM-dd}/debug.%d{yyyy-MM-dd}_%i.log
+            <FileNamePattern>/share_data/clin_result/clin_epilepsy_result/it_project/log_camunda/%d{yyyy-MM-dd}/debug.%d{yyyy-MM-dd}_%i.log
             </FileNamePattern>
             <maxFileSize>10MB</maxFileSize><!-- 日志文件大小最大值 -->
             <MaxHistory>30</MaxHistory><!-- 日志文件保留天数 -->
@@ -40,7 +40,7 @@
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <!--<FileNamePattern>D:/test/%d{yyyy-MM-dd}/debug.%d{yyyy-MM-dd}.log
             </FileNamePattern>-->
-            <FileNamePattern>/share_data/clin_result/clin_epilepsy_result/it_project_test/log_camunda/%d{yyyy-MM-dd}/info.%d{yyyy-MM-dd}.log
+            <FileNamePattern>/share_data/clin_result/clin_epilepsy_result/it_project/log_camunda/%d{yyyy-MM-dd}/info.%d{yyyy-MM-dd}.log
             </FileNamePattern>
             <MaxHistory>30</MaxHistory>
         </rollingPolicy>
@@ -61,7 +61,7 @@
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <!--<FileNamePattern>D:/test/%d{yyyy-MM-dd}/debug.%d{yyyy-MM-dd}.log
             </FileNamePattern>-->
-            <FileNamePattern>/share_data/clin_result/clin_epilepsy_result/it_project_test/log_camunda/%d{yyyy-MM-dd}/error.%d{yyyy-MM-dd}.log
+            <FileNamePattern>/share_data/clin_result/clin_epilepsy_result/it_project/log_camunda/%d{yyyy-MM-dd}/error.%d{yyyy-MM-dd}.log
             </FileNamePattern>
             <MaxHistory>90</MaxHistory>
         </rollingPolicy>

@@ -2,10 +2,8 @@ package com.nyuen.camunda.controller;
 
 import com.alibaba.fastjson.JSON;
 import com.nyuen.camunda.common.PageBean;
-import com.nyuen.camunda.domain.po.ActGeBytearray;
 import com.nyuen.camunda.domain.po.ExperimentData;
 import com.nyuen.camunda.domain.vo.*;
-import com.nyuen.camunda.mapper.ActGeBytearrayMapper;
 import com.nyuen.camunda.result.Result;
 import com.nyuen.camunda.result.ResultFactory;
 import com.nyuen.camunda.service.ExperimentDataService;
@@ -20,8 +18,6 @@ import io.swagger.annotations.ApiParam;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.camunda.bpm.engine.IdentityService;
-import org.camunda.bpm.engine.ProcessEngine;
-import org.camunda.bpm.engine.RepositoryService;
 import org.camunda.bpm.engine.TaskService;
 import org.camunda.bpm.engine.task.Attachment;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,7 +26,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -51,10 +46,6 @@ public class ProcessController {
     private TaskService taskService;
     @Resource
     private IdentityService identityService;
-    @Resource
-    private RepositoryService repositoryService;
-    @Resource
-    private ActGeBytearrayMapper geBytearrayMapper;
     @Resource
     private ExperimentDataService experimentDataService;
 
@@ -222,19 +213,6 @@ public class ProcessController {
             }
         }
         return ResultFactory.buildResult(200,"".equals(sb.toString().trim()) ? "全部处理完成" : sb.toString()+"以上样本匹配失败,原因：您的待办节点中无此样本",null);
-    }
-
-    @GetMapping("/testData")
-    public byte[] testData(String  id) throws IOException {
-        ActGeBytearray actGeBytearray = geBytearrayMapper.selectByPrimaryKey(id);
-        InputStream is = new ByteArrayInputStream(actGeBytearray.getBytes());
-        ByteArrayOutputStream swapStream = new ByteArrayOutputStream();
-        byte[] buff = new byte[1024];
-        int rc;
-        while ((rc = is.read(buff, 0, 1024)) > 0) {
-            swapStream.write(buff, 0, rc);
-        }
-        return swapStream.toByteArray();
     }
 
     @ApiOperation(value = "处理流程节点(带附件的节点)",httpMethod = "POST")

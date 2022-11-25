@@ -30,6 +30,7 @@ logging:
   level:
     com.nyuen.camunda.mappper: debug
     org.camunda: debug
+  config: classpath:logback-test.xml
 
 file:
   saveRootPath: /share_data/clin_result/clin_laboratory/camunda-file/
