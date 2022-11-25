@@ -5,6 +5,7 @@ import com.nyuen.camunda.result.Result;
 import com.nyuen.camunda.result.ResultFactory;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
 import org.camunda.bpm.engine.HistoryService;
 import org.camunda.bpm.engine.RuntimeService;
 import org.camunda.bpm.engine.TaskService;
@@ -93,26 +94,32 @@ public class ModifyController {
                 .orderByHistoricActivityInstanceEndTime()
                 .asc()
                 .list();
-        if(null == resultList || resultList.size()<2){
-            return ResultFactory.buildFailResult("第一个用户节点无法驳回！");
+        if(null == resultList || resultList.size() == 0){
+            return ResultFactory.buildFailResult("当前任务无法驳回！");
+        }
+        //得到第一个任务节点的id
+        HistoricActivityInstance historicActivityInstance = resultList.get(0);
+        String startActId = historicActivityInstance.getActivityId();
+        if(startActId.equals(task.getTaskDefinitionKey())){
+            return ResultFactory.buildFailResult("开始节点无法驳回！");
         }
         //得到上一个任务节点的ActivityId和待办人
-        Map<String,String> lastNode = getLastNode(resultList,task.getTaskDefinitionKey());
-        if(null == lastNode){
+        Map<String,String> lastNode = getLastNode(resultList, task.getTaskDefinitionKey());
+        if (null == lastNode) {
             return ResultFactory.buildFailResult("回退节点异常！");
         }
         String toActId = lastNode.get("toActId");
         String assignee = lastNode.get("assignee");
         //设置流程中的可变参数
         Map<String, Object> taskVariable = new HashMap<>(2);
-        taskVariable.put("user", assignee);
-        //taskVariable.put("formName", "流程驳回");
+//        taskVariable.put("user", assignee);
+        taskVariable.put("remark", "流程驳回"+"，驳回原因:" + rejectBean.getRejectComment());
         taskService.createComment(task.getId(), rejectBean.getProcessInstanceId(), "驳回原因:" + rejectBean.getRejectComment());
         runtimeService.createProcessInstanceModification(rejectBean.getProcessInstanceId())
                 .cancelActivityInstance(getInstanceIdForActivity(tree, task.getTaskDefinitionKey()))//关闭相关任务
                 .setAnnotation("进行了驳回到上一个任务节点操作")
                 .startBeforeActivity(toActId)//启动目标活动节点
-                .setVariables(taskVariable)//流程的可变参数赋值
+                .setVariablesLocal(taskVariable)//流程的可变参数赋值
                 .execute();
         return ResultFactory.buildSuccessResult(null);
     }
@@ -181,6 +188,7 @@ public class ModifyController {
                 HistoricActivityInstance historicActivityInstance = resultList.get(originSize - 1);
                 backNode.put("toActId", historicActivityInstance.getActivityId());
                 backNode.put("assignee", historicActivityInstance.getAssignee());
+                //backNode.put("toActName",historicActivityInstance.getActivityName());
                 return backNode;
             }
         }
@@ -206,6 +214,12 @@ public class ModifyController {
         return null;
     }
 
+    @DeleteMapping("/deleteTask")
+    public Result deleteTask(@ApiParam("任务id") String taskId){
+
+
+        return ResultFactory.buildSuccessResult(null);
+    }
 
     public static void main(String[] args) {
         HistoricActivityInstance hai1 = new HistoricActivityInstance() {
