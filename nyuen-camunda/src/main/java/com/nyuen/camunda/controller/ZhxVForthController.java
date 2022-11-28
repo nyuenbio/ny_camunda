@@ -5,13 +5,16 @@ import com.alibaba.fastjson.JSONArray;
 import com.nyuen.camunda.domain.po.SampleSiteRule;
 import com.nyuen.camunda.domain.vo.BatchStartProcessBean;
 import com.nyuen.camunda.domain.vo.SampleReceiveBean;
+import com.nyuen.camunda.domain.vo.TodoTask;
 import com.nyuen.camunda.result.Result;
 import com.nyuen.camunda.result.ResultFactory;
+import com.nyuen.camunda.service.MyTaskService;
 import com.nyuen.camunda.service.SampleSiteRuleService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.camunda.bpm.engine.IdentityService;
 import org.camunda.bpm.engine.RuntimeService;
+import org.jvnet.hk2.internal.Collector;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -40,6 +43,28 @@ public class ZhxVForthController {
     private RuntimeService runtimeService;
     @Resource
     private SampleSiteRuleService sampleSiteRuleService;
+    @Resource
+    private MyTaskService myTaskService;
+
+
+    @ApiOperation(value = "校验样本流程是否已开启",httpMethod = "POST")
+    @PostMapping("/checkSampleProcess")
+    public Result checkSampleProcess(@RequestBody BatchStartProcessBean batchStartProcessBean){
+        // 查询待办任务中是否已存在该样本：需提示再次确认
+        List<SampleReceiveBean> sampleReceiveList = batchStartProcessBean.getSampleReceiveList();
+        Map<String,Object> params = new HashMap<>();
+        params.put("procDefId",batchStartProcessBean.getProcDefId());
+        //params.put("nodeName","抽提");
+        List<TodoTask> todoTaskList = myTaskService.getTodoTaskByCondition(params);
+        if(todoTaskList ==null || todoTaskList.size() == 0){
+            return ResultFactory.buildResult(200,"",true);
+        }
+        Map<String,String> todoBusinessKeyList = todoTaskList.stream().collect(Collectors.collectingAndThen(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparing(TodoTask::getBusinessKey))), ArrayList::new))
+                .stream().collect(Collectors.toMap(TodoTask::getBusinessKey,TodoTask::getBusinessKey));
+        List<String> toStartSampleInfoList  = sampleReceiveList.stream().map(SampleReceiveBean::getSampleInfo).collect(Collectors.toList());
+        List<String> existSampleList = toStartSampleInfoList.stream().filter(item-> todoBusinessKeyList.get(item)!=null && todoBusinessKeyList.get(item).equals(item)).collect(Collectors.toList());
+        return ResultFactory.buildResult(200,existSampleList.size()==0?"":existSampleList.toString()+"以上样本已在待办流程中，请确认是否再次发起？", existSampleList.size() == 0);
+    }
 
 
     @ApiOperation(value = "批量开启流程",httpMethod = "POST")
