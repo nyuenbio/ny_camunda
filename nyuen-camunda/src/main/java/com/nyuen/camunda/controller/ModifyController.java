@@ -64,14 +64,15 @@ public class ModifyController {
         String assignee = historicActivityInstance.getAssignee();
         //设置流程中的可变参数
         Map<String, Object> taskVariable = new HashMap<>(2);
-        taskVariable.put("user", assignee);
-        //taskVariable.put("formName", "流程驳回");
+        //taskVariable.put("user", assignee);
+        taskVariable.put("remark", "流程驳回"+"，驳回原因:" + rejectBean.getRejectComment());
         taskService.createComment(task.getId(), rejectBean.getProcessInstanceId(), "驳回原因:" + rejectBean.getRejectComment());
+        taskService.setVariablesLocal(task.getId(),taskVariable);//流程的可变参数赋值
         runtimeService.createProcessInstanceModification(rejectBean.getProcessInstanceId())
                 .cancelActivityInstance(getInstanceIdForActivity(tree, task.getTaskDefinitionKey()))//关闭相关任务
                 .setAnnotation("进行了驳回到第一个任务节点操作")
                 .startBeforeActivity(toActId)//启动目标活动节点
-                .setVariables(taskVariable)//流程的可变参数赋值
+                //.setVariables(taskVariable)//流程的可变参数赋值
                 .execute();
         return ResultFactory.buildSuccessResult(null);
     }
@@ -115,11 +116,12 @@ public class ModifyController {
 //        taskVariable.put("user", assignee);
         taskVariable.put("remark", "流程驳回"+"，驳回原因:" + rejectBean.getRejectComment());
         taskService.createComment(task.getId(), rejectBean.getProcessInstanceId(), "驳回原因:" + rejectBean.getRejectComment());
+        taskService.setVariablesLocal(task.getId(),taskVariable);//流程的可变参数赋值
         runtimeService.createProcessInstanceModification(rejectBean.getProcessInstanceId())
                 .cancelActivityInstance(getInstanceIdForActivity(tree, task.getTaskDefinitionKey()))//关闭相关任务
                 .setAnnotation("进行了驳回到上一个任务节点操作")
                 .startBeforeActivity(toActId)//启动目标活动节点
-                .setVariablesLocal(taskVariable)//流程的可变参数赋值
+                //.setVariablesLocal(taskVariable)//流程的可变参数赋值
                 .execute();
         return ResultFactory.buildSuccessResult(null);
     }
@@ -171,7 +173,7 @@ public class ModifyController {
         int originSize = resultList.size();
         int duplicateRemovalSize = linkedHashMap.size();
         //判断历史节点中是否有重复节点
-        if(originSize == duplicateRemovalSize){
+//        if(originSize == duplicateRemovalSize){
             boolean flag = false;
             for(Map.Entry entry: linkedHashMap.entrySet()){
                 if(currentActivityId.equals(entry.getKey())){
@@ -191,7 +193,7 @@ public class ModifyController {
                 //backNode.put("toActName",historicActivityInstance.getActivityName());
                 return backNode;
             }
-        }
+//        }
         //情况2、当前节点在历史节点里（已回退过的）
         return currentNodeInHis(linkedHashMap, currentActivityId);
     }
@@ -646,13 +648,121 @@ public class ModifyController {
                 return null;
             }
         };
+        HistoricActivityInstance hai5 = new HistoricActivityInstance() {
+            @Override
+            public String getId() {
+                return "act-5";
+            }
+
+            @Override
+            public String getParentActivityInstanceId() {
+                return null;
+            }
+
+            @Override
+            public String getActivityId() {
+                return "act-5";
+            }
+
+            @Override
+            public String getActivityName() {
+                return null;
+            }
+
+            @Override
+            public String getActivityType() {
+                return null;
+            }
+
+            @Override
+            public String getProcessDefinitionKey() {
+                return null;
+            }
+
+            @Override
+            public String getProcessDefinitionId() {
+                return null;
+            }
+
+            @Override
+            public String getRootProcessInstanceId() {
+                return null;
+            }
+
+            @Override
+            public String getProcessInstanceId() {
+                return null;
+            }
+
+            @Override
+            public String getExecutionId() {
+                return null;
+            }
+
+            @Override
+            public String getTaskId() {
+                return null;
+            }
+
+            @Override
+            public String getCalledProcessInstanceId() {
+                return null;
+            }
+
+            @Override
+            public String getCalledCaseInstanceId() {
+                return null;
+            }
+
+            @Override
+            public String getAssignee() {
+                return "user-5";
+            }
+
+            @Override
+            public Date getStartTime() {
+                return null;
+            }
+
+            @Override
+            public Date getEndTime() {
+                return null;
+            }
+
+            @Override
+            public Long getDurationInMillis() {
+                return null;
+            }
+
+            @Override
+            public boolean isCompleteScope() {
+                return false;
+            }
+
+            @Override
+            public boolean isCanceled() {
+                return false;
+            }
+
+            @Override
+            public String getTenantId() {
+                return null;
+            }
+
+            @Override
+            public Date getRemovalTime() {
+                return null;
+            }
+        };
         List<HistoricActivityInstance> resultList = new ArrayList<>();
         resultList.add(hai1);
         resultList.add(hai2);
         resultList.add(hai3);
-//        resultList.add(hai4);
-//        resultList.add(hai3);
-        Map<String,String> map = getLastNode(resultList,"act-2");
+        resultList.add(hai4);
+        resultList.add(hai3);
+        resultList.add(hai4);
+        resultList.add(hai5);
+        Map<String,String> map = getLastNode(resultList,"act-6");
         System.out.println("toActId ==> "+map.get("toActId"));
         System.out.println("assignee ==> "+map.get("assignee"));
 
