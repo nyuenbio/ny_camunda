@@ -58,7 +58,7 @@ public class ProcessController {
 
     @ApiOperation(value = "根据样本编号查询流程",httpMethod = "POST")
     @PostMapping("/getSampleProcessList")
-    public Result getTodoList(@RequestBody SimpleQueryBean sqBean) throws IllegalAccessException {
+    public Result getSampleProcessList(@RequestBody SimpleQueryBean sqBean) throws IllegalAccessException {
         if(sqBean == null){
             return ResultFactory.buildFailResult("参数不能为空");
         }
@@ -125,7 +125,7 @@ public class ProcessController {
 
     private Result experimentDataCheckV3(List<SampleRowAndCell> sampleRowAndCellList,String nodeName){
         if(!StringUtils.equalsIgnoreCase(nodeName.trim(),"下机")){
-            return ResultFactory.buildSuccessResult(null);
+            return ResultFactory.buildResult(200,"",null);
         }
         List<String> gelGenoTypeArray = Arrays.asList("SS", "SL", "SXL", "LL", "LXL");
         List<String> descriptionArray = Arrays.asList("D.LOW Probability", "N.No-Alleles");
