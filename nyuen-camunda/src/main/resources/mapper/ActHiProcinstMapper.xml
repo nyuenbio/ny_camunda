@@ -304,14 +304,34 @@
     select
         <include refid="Base_Column_List"></include>
     from act_hi_procinst
-    where BUSINESS_KEY_ like concat("%",#{name,jdbcType=VARCHAR},"%")
+    <where>
+      <if test="name != null and name != ''">
+        and BUSINESS_KEY_ like concat("%",#{name,jdbcType=VARCHAR},"%")
+      </if>
+      <if test="startTime !=null ">
+        and DATE_FORMAT(START_TIME_, '%Y-%m-%d %H:%i:%S') &gt;= DATE_FORMAT(#{startTime}, '%Y-%m-%d %H:%i:%S')
+      </if>
+      <if test="endTime !=null ">
+        and DATE_FORMAT(START_TIME_, '%Y-%m-%d %H:%i:%S') &lt;= DATE_FORMAT(#{endTime}, '%Y-%m-%d %H:%i:%S')
+      </if>
+    </where>
     order by START_TIME_ desc
     LIMIT #{startIndex},#{pageSize}
   </select>
   <select id="getSampleProcessListCount" parameterType="java.util.HashMap" resultType="java.lang.Integer">
     select count(ID_)
     from act_hi_procinst
-    where BUSINESS_KEY_ like concat("%",#{name,jdbcType=VARCHAR},"%")
+    <where>
+      <if test="name != null and name != ''">
+        and BUSINESS_KEY_ like concat("%",#{name,jdbcType=VARCHAR},"%")
+      </if>
+      <if test="startTime !=null ">
+        and DATE_FORMAT(START_TIME_, '%Y-%m-%d %H:%i:%S') &gt;= DATE_FORMAT(#{startTime}, '%Y-%m-%d %H:%i:%S')
+      </if>
+      <if test="endTime !=null ">
+        and DATE_FORMAT(START_TIME_, '%Y-%m-%d %H:%i:%S') &lt;= DATE_FORMAT(#{endTime}, '%Y-%m-%d %H:%i:%S')
+      </if>
+    </where>
     order by START_TIME_ desc
   </select>
 

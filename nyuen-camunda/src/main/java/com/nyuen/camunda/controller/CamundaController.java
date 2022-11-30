@@ -354,14 +354,22 @@ public class CamundaController {
     @ApiOperation(value = "我发起的流程new", httpMethod = "POST")
     @PostMapping("/checkByInitiatorNew")
     public Result checkByInitiatorNew(@RequestBody SimpleQueryBean sqBean) {
-        List<HistoricProcessInstance> hiList = historyService.createHistoricProcessInstanceQuery()
+        HistoricProcessInstanceQuery hpiQuery = historyService.createHistoricProcessInstanceQuery();
+        if(StringUtils.isNoneBlank(sqBean.getName())){
+            hpiQuery.processInstanceBusinessKeyLike("%"+sqBean.getName()+"%");
+        }
+        if(null != sqBean.getStartTime()){
+            hpiQuery.startedAfter(sqBean.getStartTime());
+        }
+        if(null != sqBean.getEndTime()){
+            hpiQuery.startedBefore(sqBean.getEndTime());
+        }
+        List<HistoricProcessInstance> hiList = hpiQuery
                 .startedBy(sqBean.getAssignee())
-                .processInstanceBusinessKeyLike(sqBean.getName())
                 .orderByProcessInstanceEndTime()
                 .desc()
                 .listPage((sqBean.getCurrentPage()-1)*sqBean.getPageSize(),sqBean.getPageSize());
-        long count = historyService.createHistoricProcessInstanceQuery()
-                .processInstanceBusinessKeyLike(sqBean.getName())
+        long count = hpiQuery
                 .startedBy(sqBean.getAssignee())
                 .count();
         Map<String,Object> result = new HashMap<>();

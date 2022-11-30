@@ -403,6 +403,12 @@
             <if test="name != null and name != ''">
               and HIP.BUSINESS_KEY_ like concat("%",#{name},"%")
             </if>
+            <if test="startTime !=null ">
+              and DATE_FORMAT(RES.END_TIME_, '%Y-%m-%d %H:%i:%S') &gt;= DATE_FORMAT(#{startTime}, '%Y-%m-%d %H:%i:%S')
+            </if>
+            <if test="endTime !=null ">
+              and DATE_FORMAT(RES.END_TIME_, '%Y-%m-%d %H:%i:%S') &lt;= DATE_FORMAT(#{endTime}, '%Y-%m-%d %H:%i:%S')
+            </if>
         )
     ORDER BY
         RES.END_TIME_ DESC
@@ -421,6 +427,12 @@
             AND RES.END_TIME_ IS NOT NULL
             <if test="name != null and name != ''">
               and HIP.BUSINESS_KEY_ like concat("%",#{name},"%")
+            </if>
+            <if test="startTime !=null ">
+              and DATE_FORMAT(RES.END_TIME_, '%Y-%m-%d %H:%i:%S') &gt;= DATE_FORMAT(#{startTime}, '%Y-%m-%d %H:%i:%S')
+            </if>
+            <if test="endTime !=null ">
+              and DATE_FORMAT(RES.END_TIME_, '%Y-%m-%d %H:%i:%S') &lt;= DATE_FORMAT(#{endTime}, '%Y-%m-%d %H:%i:%S')
             </if>
         )
   </select>
