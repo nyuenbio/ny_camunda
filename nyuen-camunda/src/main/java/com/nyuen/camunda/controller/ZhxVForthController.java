@@ -2,6 +2,7 @@ package com.nyuen.camunda.controller;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
+import com.nyuen.camunda.domain.po.SampleLabInfo;
 import com.nyuen.camunda.domain.po.SampleSiteRule;
 import com.nyuen.camunda.domain.vo.BatchStartProcessBean;
 import com.nyuen.camunda.domain.vo.SampleReceiveBean;
@@ -9,11 +10,14 @@ import com.nyuen.camunda.domain.vo.TodoTask;
 import com.nyuen.camunda.result.Result;
 import com.nyuen.camunda.result.ResultFactory;
 import com.nyuen.camunda.service.MyTaskService;
+import com.nyuen.camunda.service.SampleLabInfoService;
 import com.nyuen.camunda.service.SampleSiteRuleService;
+import com.nyuen.camunda.utils.ExcelUtil;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.camunda.bpm.engine.IdentityService;
 import org.camunda.bpm.engine.RuntimeService;
+import org.camunda.bpm.engine.runtime.ProcessInstance;
 import org.jvnet.hk2.internal.Collector;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.Resource;
+import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -45,6 +50,8 @@ public class ZhxVForthController {
     private SampleSiteRuleService sampleSiteRuleService;
     @Resource
     private MyTaskService myTaskService;
+    @Resource
+    private SampleLabInfoService sampleLabInfoService;
 
 
     @ApiOperation(value = "校验样本流程是否已开启",httpMethod = "POST")
@@ -79,22 +86,37 @@ public class ZhxVForthController {
                 Map<String, Object> variables = new HashMap<>();
                 List<SampleSiteRule> sampleSiteRuleList = sampleSiteRuleService.getHoleAndAssayByProductName(Arrays.asList(srBean.getProductName().split(",")));
                 if(sampleSiteRuleList != null && sampleSiteRuleList.size()>0) {
-                    LinkedHashSet<String> holeCodes = new LinkedHashSet<>();
-                    LinkedHashSet<String> assayCodes = new LinkedHashSet<>();
+                    LinkedHashSet<String> holeCodesSet = new LinkedHashSet<>();
+                    LinkedHashSet<String> assayCodesSet = new LinkedHashSet<>();
                     List<SampleSiteRule> resultList = sampleSiteRuleList.stream().map(m -> {
                         List<String> hole = Arrays.asList(m.getHoleCode().split(","));
-                        holeCodes.addAll(hole);
+                        holeCodesSet.addAll(hole);
                         List<String> assay = Arrays.asList(m.getAssayCode().split(","));
-                        assayCodes.addAll(assay);
+                        assayCodesSet.addAll(assay);
                         return m;
                     }).collect(Collectors.toList());
+                    String holeCodes = holeCodesSet.toString().substring(1, holeCodesSet.toString().length() - 1);
+                    String assayCodes = assayCodesSet.toString().substring(1, assayCodesSet.toString().length() - 1);
                     variables.put("套餐名称", srBean.getProductName());
-                    variables.put("孔位", holeCodes.size());
-                    variables.put("对应编码", holeCodes.toString().substring(1, holeCodes.toString().length() - 1));
-                    variables.put("ASSAY编号", assayCodes.toString().substring(1, assayCodes.toString().length() - 1));
-                    runtimeService.startProcessInstanceById(procDefId, srBean.getSampleInfo(), variables);
+                    variables.put("孔位", holeCodesSet.size());
+                    variables.put("对应编码", holeCodes);
+                    variables.put("ASSAY编号", assayCodes);
+                    ProcessInstance pi = runtimeService.startProcessInstanceById(procDefId, srBean.getSampleInfo(), variables);
+                    SampleLabInfo sampleLabInfo = new SampleLabInfo();
+                    sampleLabInfo.setSampleInfo(srBean.getSampleInfo());
+                    sampleLabInfo.setInitiator(initiator);
+                    sampleLabInfo.setProcDefId(procDefId);
+                    sampleLabInfo.setProcInstId(pi.getId());
+                    sampleLabInfo.setProductType(srBean.getProductType());
+                    sampleLabInfo.setProductName(srBean.getProductName());
+                    sampleLabInfo.setHoleNum(holeCodesSet.size());
+                    sampleLabInfo.setHoleCode(holeCodes);
+                    sampleLabInfo.setAssayCode(assayCodes);
+                    sampleLabInfo.setCreateTime(new Date());
+                    sampleLabInfoService.addSampleLanInfo(sampleLabInfo);
                 }else{
                     runtimeService.startProcessInstanceById(procDefId, srBean.getSampleInfo());
+
                 }
             }else{
                 runtimeService.startProcessInstanceById(procDefId, srBean.getSampleInfo());
@@ -102,6 +124,18 @@ public class ZhxVForthController {
         }
         return ResultFactory.buildSuccessResult(null);
     }
+
+    @ApiOperation(value = "导出样本位点信息",httpMethod = "POST")
+    @PostMapping("/exportSampleSiteInfo")
+    public void exportSampleSiteInfo(@RequestBody List<String> procInstIdList, HttpServletResponse response) throws Exception {
+        List<SampleLabInfo> sampleLabInfoList = sampleLabInfoService.getSampleLabInfoList(procInstIdList);
+        // 构建导出excel表头（第一行）
+        String[] excelHeader = {"样本编号", "产品名称", "孔位", "孔位编号", "ASSAY编号","创建时间"};
+        ExcelUtil.exportExcel(response,excelHeader,sampleLabInfoList,"样本位点信息","样本位点信息");
+
+    }
+
+
 
     public static void main(String[] args) {
         SampleReceiveBean srBean = new SampleReceiveBean();
