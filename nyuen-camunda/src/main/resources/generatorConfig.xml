@@ -139,7 +139,11 @@
         <table tableName="sample_site_rule" domainObjectName="SampleSiteRule" enableCountByExample="false" enableDeleteByExample="false"
                enableSelectByExample="false" enableUpdateByExample="false" selectByExampleQueryId="false">
         </table>
--->
+
+        <table tableName="sample_lab_info" domainObjectName="SampleLabInfo" enableCountByExample="false" enableDeleteByExample="false"
+               enableSelectByExample="false" enableUpdateByExample="false" selectByExampleQueryId="false">
+        </table>
+        -->
         <table tableName="reference" domainObjectName="Reference" enableCountByExample="false" enableDeleteByExample="false"
                enableSelectByExample="false" enableUpdateByExample="false" selectByExampleQueryId="false">
         </table>

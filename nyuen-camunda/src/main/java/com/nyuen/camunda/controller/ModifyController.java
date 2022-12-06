@@ -181,10 +181,6 @@ public class ModifyController {
                     break;
                 }
             }
-//            if(flag){
-//                //当前节点在历史节点里：最后一个节点是回退节点
-//                return currentNodeInHis(linkedHashMap, currentActivityId);
-//            }
             if(!flag) {
                 //当前节点不在历史节点里：最后一个节点是完成节点
                 HistoricActivityInstance historicActivityInstance = resultList.get(originSize - 1);

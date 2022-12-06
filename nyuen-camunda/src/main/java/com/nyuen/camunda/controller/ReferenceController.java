@@ -29,6 +29,7 @@ public class ReferenceController {
     @ApiOperation(value = "根据编号查询文献",httpMethod = "GET")
     @GetMapping("/getReferenceByCode")
     public Result getReferenceByCode(@ApiParam("文献编号") String code){
+        referenceService.updateSearchTimes(code);
         return ResultFactory.buildSuccessResult(referenceService.getReferenceByCode(code));
     }
 

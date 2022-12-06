@@ -25,4 +25,9 @@ public class ReferenceServiceImpl implements ReferenceService {
     public List<Reference> getReferenceByCode(String code) {
         return referenceMapper.getReferenceByCode(code);
     }
+
+    @Override
+    public void updateSearchTimes(String code) {
+        referenceMapper.updateSearchTimes(code);
+    }
 }

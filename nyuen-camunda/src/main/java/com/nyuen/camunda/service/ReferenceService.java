@@ -13,4 +13,6 @@ import java.util.List;
  */
 public interface ReferenceService {
     List<Reference> getReferenceByCode(String code);
+
+    void updateSearchTimes(String code);
 }
