@@ -309,4 +309,14 @@
         </foreach>
   </select>
 
+  <select id="getLastSampleLabInfoBySampleNum" parameterType="java.lang.String" resultMap="BaseResultMap">
+    select
+        sample_info, node_name, product_name, hole_num, hole_code, assay_code, create_time
+    from sample_lab_info
+    where
+        sample_info =#{sampleInfo,jdbcType=VARCHAR}
+    order by create_time desc
+    limit 0,1
+  </select>
+
 </mapper>

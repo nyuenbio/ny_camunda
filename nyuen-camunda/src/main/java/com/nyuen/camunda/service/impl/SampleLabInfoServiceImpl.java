@@ -31,4 +31,9 @@ public class SampleLabInfoServiceImpl implements SampleLabInfoService {
     public List<SampleLabInfo> getSampleLabInfoList(List<String> procInstIdList) {
         return sampleLabInfoMapper.getSampleLabInfoList(procInstIdList);
     }
+
+    @Override
+    public SampleLabInfo getLastSampleLabInfoBySampleNum(String sampleInfo) {
+        return sampleLabInfoMapper.getLastSampleLabInfoBySampleNum(sampleInfo);
+    }
 }

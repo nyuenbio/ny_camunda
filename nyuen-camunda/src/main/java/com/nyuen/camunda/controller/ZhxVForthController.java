@@ -1,7 +1,5 @@
 package com.nyuen.camunda.controller;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
 import com.nyuen.camunda.domain.po.SampleLabInfo;
 import com.nyuen.camunda.domain.po.SampleSiteRule;
 import com.nyuen.camunda.domain.vo.BatchStartProcessBean;
@@ -18,8 +16,6 @@ import io.swagger.annotations.ApiOperation;
 import org.camunda.bpm.engine.IdentityService;
 import org.camunda.bpm.engine.RuntimeService;
 import org.camunda.bpm.engine.runtime.ProcessInstance;
-import org.jvnet.hk2.internal.Collector;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,8 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletResponse;
-import javax.validation.Valid;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
@@ -88,15 +84,18 @@ public class ZhxVForthController {
                 if(sampleSiteRuleList != null && sampleSiteRuleList.size()>0) {
                     LinkedHashSet<String> holeCodesSet = new LinkedHashSet<>();
                     LinkedHashSet<String> assayCodesSet = new LinkedHashSet<>();
+                    AtomicInteger cnvState = new AtomicInteger();
                     List<SampleSiteRule> resultList = sampleSiteRuleList.stream().map(m -> {
                         List<String> hole = Arrays.asList(m.getHoleCode().split(","));
                         holeCodesSet.addAll(hole);
                         List<String> assay = Arrays.asList(m.getAssayCode().split(","));
                         assayCodesSet.addAll(assay);
+                        cnvState.set(cnvState.intValue() | m.getState());
                         return m;
                     }).collect(Collectors.toList());
                     String holeCodes = holeCodesSet.toString().substring(1, holeCodesSet.toString().length() - 1);
                     String assayCodes = assayCodesSet.toString().substring(1, assayCodesSet.toString().length() - 1);
+
                     variables.put("套餐名称", srBean.getProductName());
                     variables.put("孔位", holeCodesSet.size());
                     variables.put("对应编码", holeCodes);
@@ -113,10 +112,10 @@ public class ZhxVForthController {
                     sampleLabInfo.setHoleCode(holeCodes);
                     sampleLabInfo.setAssayCode(assayCodes);
                     sampleLabInfo.setCreateTime(new Date());
+                    sampleLabInfo.setRemark(cnvState.intValue() == 0 ? "不做CNV":"");
                     sampleLabInfoService.addSampleLanInfo(sampleLabInfo);
                 }else{
                     runtimeService.startProcessInstanceById(procDefId, srBean.getSampleInfo());
-
                 }
             }else{
                 runtimeService.startProcessInstanceById(procDefId, srBean.getSampleInfo());
@@ -130,46 +129,76 @@ public class ZhxVForthController {
     public void exportSampleSiteInfo(@RequestBody List<String> procInstIdList, HttpServletResponse response) throws Exception {
         List<SampleLabInfo> sampleLabInfoList = sampleLabInfoService.getSampleLabInfoList(procInstIdList);
         // 构建导出excel表头（第一行）
-        String[] excelHeader = {"样本编号", "产品名称", "孔位", "孔位编号", "ASSAY编号","创建时间"};
+        String[] excelHeader = {"样本编号", "产品名称", "孔位", "孔位编号", "ASSAY编号","创建时间","备注"};
         ExcelUtil.exportExcel(response,excelHeader,sampleLabInfoList,"样本位点信息","样本位点信息");
 
     }
 
+    @ApiOperation(value = "校验样本是否有孔位变化",httpMethod = "POST")
+    @PostMapping("/checkIfHoleChange")
+    public Result checkIfHoleChange(@RequestBody BatchStartProcessBean batchStartProcessBean){
+        StringBuilder result = new StringBuilder();
+        for(SampleReceiveBean srBean : batchStartProcessBean.getSampleReceiveList()) {
+            SampleLabInfo sampleLabInfo = sampleLabInfoService.getLastSampleLabInfoBySampleNum(srBean.getSampleInfo());
+            if(null == sampleLabInfo){
+                return ResultFactory.buildFailResult("该样本位点信息不存在！");
+            }
+            if(sampleLabInfo.getProductName().equals(srBean.getProductName())){
+                break;
+            }
+            List<SampleSiteRule> sampleSiteRuleList = sampleSiteRuleService.getHoleAndAssayByProductName(Arrays.asList(srBean.getProductName().split(",")));
+            LinkedHashSet<String> holeCodesSet = new LinkedHashSet<>();
+            if(sampleSiteRuleList != null && sampleSiteRuleList.size()>0) {
 
+                List<SampleSiteRule> resultList = sampleSiteRuleList.stream().map(m -> {
+                    List<String> hole = Arrays.asList(m.getHoleCode().split(","));
+                    holeCodesSet.addAll(hole);
+                    return m;
+                }).collect(Collectors.toList());
+
+            }
+            String holeCodes = holeCodesSet.toString().substring(1, holeCodesSet.toString().length() - 1);
+            if(!sampleLabInfo.getHoleCode().equals(holeCodes)){
+                result.append("样本").append(sampleLabInfo.getSampleInfo()).append("原套餐位点为（").append(sampleLabInfo.getHoleCode()).append("#").append(holeCodes).append(")")
+                        .append("，现追加套餐位点为（").append(srBean.getProductName()).append("#").append(holeCodes).append("。");
+            }
+        }
+        return ResultFactory.buildResult(200, result.length()>0?result.toString():"孔位无变化","");
+    }
 
     public static void main(String[] args) {
         SampleReceiveBean srBean = new SampleReceiveBean();
         srBean.setProductType(236);
         srBean.setProductName("抗精神病药,抗抑郁药,心境稳定剂,抗凝血药和抗血小板药/抗痛风药,抗高血压药,降糖药和抗糖尿病药");
+
         List<SampleSiteRule> sampleSiteRuleList = new ArrayList<>();
-        SampleSiteRule ssRule1 = new SampleSiteRule(4,"A,B,C,D","XJ1-30,XJ31-50,YY1-30,YY31-56");
-        SampleSiteRule ssRule2 = new SampleSiteRule(4,"A,B,C,D","XJ1-30,XJ31-50,YY1-30,YY31-56");
-        SampleSiteRule ssRule3 = new SampleSiteRule(2,"A,B","XJ1-30,XJ31-50");
-        SampleSiteRule ssRule4 = new SampleSiteRule(1,"G","XS1-25");
-        SampleSiteRule ssRule5 = new SampleSiteRule(1,"E","G1-31");
-        SampleSiteRule ssRule6 = new SampleSiteRule(1,"F","TN1-25");
-        sampleSiteRuleList.add(ssRule1);
-        sampleSiteRuleList.add(ssRule2);
-        sampleSiteRuleList.add(ssRule3);
+        SampleSiteRule ssRule1 = new SampleSiteRule(4,"A,B,C,D","XJ1-30,XJ31-50,YY1-30,YY31-56",0);
+        SampleSiteRule ssRule2 = new SampleSiteRule(4,"A,B,C,D","XJ1-30,XJ31-50,YY1-30,YY31-56",1);
+        SampleSiteRule ssRule3 = new SampleSiteRule(2,"A,B","XJ1-30,XJ31-50",0);
+        SampleSiteRule ssRule4 = new SampleSiteRule(1,"G","XS1-25",0);
+        SampleSiteRule ssRule5 = new SampleSiteRule(1,"E","G1-31",1);
+        SampleSiteRule ssRule6 = new SampleSiteRule(1,"F","TN1-25",0);
+        //sampleSiteRuleList.add(ssRule1);
+        //sampleSiteRuleList.add(ssRule2);
+        //sampleSiteRuleList.add(ssRule3);
         sampleSiteRuleList.add(ssRule4);
-        sampleSiteRuleList.add(ssRule5);
+        //sampleSiteRuleList.add(ssRule5);
+        sampleSiteRuleList.add(ssRule6);
         LinkedHashSet<String> holeCodes = new LinkedHashSet<>();
         LinkedHashSet<String> assayCodes = new LinkedHashSet<>();
+        AtomicInteger cnvState = new AtomicInteger();
         List<SampleSiteRule> resultList = sampleSiteRuleList.stream().map(m-> {
             List<String> hole = Arrays.asList(m.getHoleCode().split(","));
             holeCodes.addAll(hole);
             List<String> assay = Arrays.asList(m.getAssayCode().split(","));
             assayCodes.addAll(assay);
+            cnvState.set(cnvState.intValue() | m.getState());
             return m;
         }).collect(Collectors.toList());
 
         System.out.println(holeCodes.toString().substring(1,holeCodes.toString().length()-1));
         System.out.println(assayCodes.toString());
-//        for(String s: holeCodes){
-//            System.out.println(s);
-//        }
-
-
+        System.out.println(cnvState);
     }
 
 }

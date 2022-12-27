@@ -11,3 +11,8 @@ file:
   saveRootPath: D:/test/camunda-file/
   readRootPath: D:/test/camunda-file/
 
+#是否开启swagger
+swagger:
+  enabled: true
+
+operationLogService: http://report.nyuen-group.com:8200/api-report/oplog/addOperationLog

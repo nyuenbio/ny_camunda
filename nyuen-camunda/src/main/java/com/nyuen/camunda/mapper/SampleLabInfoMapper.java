@@ -62,4 +62,6 @@ public interface SampleLabInfoMapper {
 
 
     List<SampleLabInfo> getSampleLabInfoList(List<String> procInstIdList);
+
+    SampleLabInfo getLastSampleLabInfoBySampleNum(String sampleInfo);
 }

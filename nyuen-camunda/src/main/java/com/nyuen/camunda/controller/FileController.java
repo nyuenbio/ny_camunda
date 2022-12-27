@@ -41,12 +41,11 @@ public class FileController {
     @PostMapping("/uploadFile")
     public Result uploadFile(@RequestBody MultipartFile multipartFile) {
         // 上传文件到服务器
-        String filePath = null;
-        String originalFilename;
+        String filePath;
         File file;
         String readPath = "";
         try {
-            originalFilename = multipartFile.getOriginalFilename();
+            String originalFilename = multipartFile.getOriginalFilename();
             String now = DateUtil.DateToString(new Date(), "yyyyMMdd");
             String rootPath = saveRootPath + now + "/";
             File rootFile = new File(rootPath);

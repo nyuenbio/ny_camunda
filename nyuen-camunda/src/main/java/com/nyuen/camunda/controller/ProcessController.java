@@ -1,21 +1,23 @@
 package com.nyuen.camunda.controller;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import com.nyuen.camunda.common.PageBean;
 import com.nyuen.camunda.domain.po.ExperimentData;
+import com.nyuen.camunda.domain.po.NyuenResultCheck;
 import com.nyuen.camunda.domain.vo.*;
+import com.nyuen.camunda.mapper.NyuenResultCheckMapper;
 import com.nyuen.camunda.result.Result;
 import com.nyuen.camunda.result.ResultFactory;
 import com.nyuen.camunda.service.ExperimentDataService;
 import com.nyuen.camunda.service.MyTaskService;
-import com.nyuen.camunda.utils.ExcelUtil;
-import com.nyuen.camunda.utils.FileUtil;
-import com.nyuen.camunda.utils.ObjectUtil;
-import com.nyuen.camunda.utils.PageConvert;
+import com.nyuen.camunda.utils.*;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.http.NameValuePair;
+import org.apache.http.message.BasicNameValuePair;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.camunda.bpm.engine.IdentityService;
 import org.camunda.bpm.engine.TaskService;
@@ -25,6 +27,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
 import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -48,12 +51,15 @@ public class ProcessController {
     private IdentityService identityService;
     @Resource
     private ExperimentDataService experimentDataService;
+    @Resource
+    private NyuenResultCheckMapper nyuenResultCheckMapper;
 
     @Value("${file.saveRootPath}")
     private String saveRootPath;
     @Value("${file.readRootPath}")
     private String readRootPath;
-
+    @Value("${operationLogService}")
+    private String operationLogService;
 
 
     @ApiOperation(value = "根据样本编号查询流程",httpMethod = "POST")
@@ -84,7 +90,7 @@ public class ProcessController {
     @ApiOperation(value = "通过上传解析Excel表格，处理流程节点并添加流程变量", httpMethod = "POST")
     @PostMapping("/batchDealNodeByExcel")
     public Result batchDealNodeByExcel(MultipartFile multipartFile, @ApiParam("当前登录人id") String assignee,
-                                       String procDefId,@ApiParam("节点名称") String nodeName)
+                                       String procDefId, @ApiParam("节点名称") String nodeName, HttpServletRequest request)
             throws IOException, InvalidFormatException {
         if(StringUtils.isEmpty(assignee)){
             return ResultFactory.buildFailResult("当前用户不能为空");
@@ -103,7 +109,7 @@ public class ProcessController {
         // 得到相同样本编号归类后的Excel表格数据
         List<SampleRowAndCell> sampleRowAndCellList = (List<SampleRowAndCell>) result1.getData();
         // 1、校验表格 V3版本规则
-        Result checkResult = experimentDataCheckV3(sampleRowAndCellList, nodeName);
+        Result checkResult = experimentDataCheckV42(sampleRowAndCellList, nodeName, assignee, multipartFile.getOriginalFilename(),request);
         if(StringUtils.isNotEmpty(checkResult.getMessage())){
             return checkResult;
         }
@@ -120,7 +126,8 @@ public class ProcessController {
         experimentDataService.addExperimentData(experimentData);
         //}
         // 3、处理流程节点
-        return dealTaskNodeByExcel(sampleRowAndCellList,assignee,procDefId,nodeName);
+        //return dealTaskNodeByExcel(sampleRowAndCellList,assignee,procDefId,nodeName);
+        return ResultFactory.buildSuccessResult("");
     }
 
     private Result experimentDataCheckV3(List<SampleRowAndCell> sampleRowAndCellList,String nodeName){
@@ -181,6 +188,252 @@ public class ProcessController {
             return ResultFactory.buildResult(200,"",null);
         }
         return ResultFactory.buildResult(200,result,null);
+    }
+
+    private Result experimentDataCheckV4(List<SampleRowAndCell> sampleRowAndCellList,String nodeName){
+        if(!StringUtils.equalsIgnoreCase(nodeName.trim(),"下机")){
+            return ResultFactory.buildResult(200,"",null);
+        }
+        List<String> gelGenoTypeArray = Arrays.asList("SS", "SL", "SXL", "LL", "LXL");
+        List<String> descriptionArray = Collections.singletonList("D.LOW Probability");
+        // 校验规则
+        //
+        // 2.Methodology-CNV的位点，固定是rs16947(可能会因为下拉导致错误)
+        // 3. SS/SL/SXL/LL/SXL/LXL-对应的Methodology是GEL
+        // 4. Description这一列评级不能出现D.LOW Probability
+        List<String> cnvErr = new ArrayList<>();
+        List<String> gelErr = new ArrayList<>();
+        List<String> descriptionErr = new ArrayList<>();
+        List<ExperimentalDataRow> experimentalDataRowList = new ArrayList<>();
+        for(SampleRowAndCell sampleRowAndCell: sampleRowAndCellList){
+            List<List<String>> sampleRowList = sampleRowAndCell.getSampleRowList();
+            for(List<String> rowList : sampleRowList){
+                ExperimentalDataRow dataRow = new ExperimentalDataRow();
+                dataRow.setSampleNum(sampleRowAndCell.getSampleInfo());
+                dataRow.setGenotype(rowList.get(1));
+                dataRow.setSnpId(rowList.get(2));
+                dataRow.setDescription(rowList.get(3));
+                dataRow.setMethodology(rowList.get(5));
+                experimentalDataRowList.add(dataRow);
+            }
+        }
+        experimentalDataRowList.stream().filter(experimentalDataRow -> "CNV".equals(experimentalDataRow.getMethodology()) && !"rs16947".equals(experimentalDataRow.getSnpId()))
+                .collect(Collectors.toList())
+                .stream().map(experimentalDataRow -> {
+            cnvErr.add(experimentalDataRow.getSampleNum());
+            return cnvErr;
+        }).collect(Collectors.toList());
+        experimentalDataRowList.stream().filter(experimentalDataRow -> "GEL".equals(experimentalDataRow.getMethodology()) && !(gelGenoTypeArray.indexOf(experimentalDataRow.getGenotype()) >= 0))
+                .collect(Collectors.toList())
+                .stream().map(experimentalDataRow -> {
+            gelErr.add(experimentalDataRow.getSampleNum());
+            return gelErr;
+        }).collect(Collectors.toList());
+        experimentalDataRowList.stream().filter(experimentalDataRow -> descriptionArray.indexOf(experimentalDataRow.getDescription()) >= 0)
+                .collect(Collectors.toList())
+                .stream().map(experimentalDataRow -> {
+            descriptionErr.add(experimentalDataRow.getSampleNum());
+            return descriptionErr;
+        }).collect(Collectors.toList());
+
+        String result = (cnvErr.size()>0? cnvErr.stream().distinct().collect(Collectors.toList()).toString()+"以上样本存在CNV位点不是rs16947 。" : "")
+                +(gelErr.size()>0?gelErr.stream().distinct().collect(Collectors.toList()).toString()+"以上样本存在GEL位点不是SS/SL/SXL/LL/LXL 。" : "")
+                +(descriptionErr.size()>0?descriptionErr.stream().distinct().collect(Collectors.toList()).toString()+"以上样本存在description是D.LOW Probability 。" : "");
+        if(StringUtils.isEmpty(result)){
+            return ResultFactory.buildResult(200,"",null);
+        }
+        return ResultFactory.buildResult(200,result,null);
+    }
+
+    private Result experimentDataCheckV42(List<SampleRowAndCell> sampleRowAndCellList,String nodeName,String assignee, String fileName,HttpServletRequest request){
+        if(!StringUtils.equalsIgnoreCase(nodeName.trim(),"下机")){
+            return ResultFactory.buildResult(200,"",null);
+        }
+        List<String> descriptionArray = Collections.singletonList("D.LOW Probability");
+        // 校验规则
+        // 2.Methodology-CNV的位点，固定是rs16947(可能会因为下拉导致错误)
+        // 4.Description这一列评级不能出现D.LOW Probability
+        // 5.同一样本，同一rs号，如果call不同，需记录并报错
+        // 6.需根据套餐校验位点数，A:29,B:20,C:29,D:27,E:30,F:25,G:25,CNV:1
+        List<String> cnvErr = new ArrayList<>();
+        List<String> descriptionErr = new ArrayList<>();
+        StringBuilder holeNumErr = new StringBuilder();
+        StringBuilder callResultErr = new StringBuilder();
+        List<String> callResultErrSamples = new ArrayList<>();
+        List<ExperimentalDataRowNew> experimentalDataRowList = new ArrayList<>();
+        // 避免重复数据 todo
+        nyuenResultCheckMapper.delResultBySampleInfo(sampleRowAndCellList);
+        for(SampleRowAndCell sampleRowAndCell: sampleRowAndCellList){
+            List<List<String>> sampleRowList = sampleRowAndCell.getSampleRowList();
+            for(List<String> rowList : sampleRowList){
+                ExperimentalDataRowNew dataRowNew = new ExperimentalDataRowNew();
+                dataRowNew.setSampleNum(sampleRowAndCell.getSampleInfo());
+                dataRowNew.setCallResult(rowList.get(0));
+                dataRowNew.setAssayId(rowList.get(1));
+                dataRowNew.setWellPosition(rowList.get(2));
+                dataRowNew.setDescription(rowList.get(3));
+                dataRowNew.setGeneHap(rowList.get(4));
+                dataRowNew.setMethodology(rowList.get(5));
+                experimentalDataRowList.add(dataRowNew);
+                NyuenResultCheck resultCheck = new NyuenResultCheck();
+                resultCheck.setSampleInfo(sampleRowAndCell.getSampleInfo());
+                resultCheck.setCallResult(rowList.get(0));
+                resultCheck.setAssayId(rowList.get(1));
+                resultCheck.setAssayType(rowList.get(1).substring(0,1));
+                resultCheck.setCreateUser(assignee);
+                resultCheck.setCreateTime(new Date());
+                if(null != rowList.get(6) && "CNV".equalsIgnoreCase(rowList.get(5).trim())){
+                    resultCheck.setAssayType("CNV");
+                }
+                nyuenResultCheckMapper.insertSelective(resultCheck);
+            }
+        }
+        // （1）批量更新nyuenResultCheck表的rs号 todo 添加事务?
+        nyuenResultCheckMapper.updateSnpInfo(sampleRowAndCellList);
+        // （2）校验相同rs号的结果，校验各类型孔位的位点数
+        checkHoleNumAndCallResult(sampleRowAndCellList,holeNumErr,callResultErrSamples,callResultErr);
+        if(callResultErr.length()>0) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("sampleNum", callResultErrSamples.toString().substring(1,callResultErrSamples.toString().length()-1));
+            map.put("operation", "上传下机数据" + fileName);
+            map.put("type", 2);
+            map.put("undefined1", callResultErr.toString());
+            map.put("createTime", new Date());
+            map.put("Authorization",request.getHeader("Authorization"));
+            String result = HttpClientUtil.httpPostJson(operationLogService, JSON.parseObject(JSONObject.toJSONString(map)));
+            JSONObject jsonObject = JSON.parseObject(result);
+            if(!"200".equals(jsonObject.get("code").toString())){
+                return ResultFactory.buildFailResult(jsonObject.get("message").toString());
+            }
+        }
+        experimentalDataRowList.stream().filter(experimentalDataRow -> "CNV".equals(experimentalDataRow.getMethodology()) && !"rs16947".equals(experimentalDataRow.getAssayId()))
+                .collect(Collectors.toList())
+                .stream().map(experimentalDataRow -> {
+            cnvErr.add(experimentalDataRow.getSampleNum());
+            return cnvErr;
+        }).collect(Collectors.toList());
+
+        experimentalDataRowList.stream().filter(experimentalDataRow -> descriptionArray.indexOf(experimentalDataRow.getDescription()) >= 0)
+                .collect(Collectors.toList())
+                .stream().map(experimentalDataRow -> {
+            descriptionErr.add(experimentalDataRow.getSampleNum());
+            return descriptionErr;
+        }).collect(Collectors.toList());
+
+        String result = (cnvErr.size()>0? cnvErr.stream().distinct().collect(Collectors.toList()).toString()+"以上样本存在CNV位点不是rs16947 。" : "")
+                +(descriptionErr.size()>0?descriptionErr.stream().distinct().collect(Collectors.toList()).toString()+"以上样本存在description是D.LOW Probability 。" : "")
+                +(holeNumErr.length()>0? holeNumErr.toString():"")
+                +(callResultErr.length()>0?callResultErr.toString():"");
+        if(StringUtils.isEmpty(result)){
+            return ResultFactory.buildResult(200,"",null);
+        }
+        return ResultFactory.buildResult(200,result,null);
+    }
+
+    private void checkHoleNumAndCallResult(List<SampleRowAndCell> sampleRowAndCellList, StringBuilder holeNumErr,
+                                           List<String> callResultErrSamples,StringBuilder callResultErr ){
+        List<NyuenResultCheck> nyuenResultCheckList = nyuenResultCheckMapper.getSnpInfoBySampleNums(sampleRowAndCellList);
+        Map<String,List<NyuenResultCheck>> groupMap = new HashMap<>();
+        //将结果集按样本编号分组
+        for(NyuenResultCheck resultCheck : nyuenResultCheckList){
+            List<NyuenResultCheck> groupList = groupMap.get(resultCheck.getSampleInfo());
+            if(null == groupList){
+                List<NyuenResultCheck> valueList = new ArrayList<>();
+                valueList.add(resultCheck);
+                groupMap.put(resultCheck.getSampleInfo(),valueList);
+            }else{
+                groupList.add(resultCheck);
+                groupMap.put(resultCheck.getSampleInfo(),groupList);
+            }
+        }
+        for(Map.Entry entry : groupMap.entrySet()) {
+            List<NyuenResultCheck> groupResultCheckList = (List<NyuenResultCheck>) entry.getValue();
+            int a = 0;
+            int b = 0;
+            int c = 0;
+            int d = 0;
+            int e = 0;
+            int f = 0;
+            int g = 0;
+            int cnv = 0;
+            for(NyuenResultCheck resultCheck : groupResultCheckList){
+                switch (resultCheck.getAssayType()){
+                    case "A":
+                        a=a+1;
+                        break;
+                    case "B":
+                        b=b+1;
+                        break;
+                    case "C":
+                        c=c+1;
+                        break;
+                    case "D":
+                        d=d+1;
+                        break;
+                    case "E":
+                        e=e+1;
+                        break;
+                    case "F":
+                        f=f+1;
+                        break;
+                    case "G":
+                        g=g+1;
+                        break;
+                    case "CNV":
+                        cnv=cnv+1;
+                        break;
+                    default:
+                        break;
+                }
+            }
+            StringBuilder sampleHoleNumErr = new StringBuilder();
+            boolean flag = false;
+            if(a !=0 && AssayHoleNum.A.getHoleNum() != a){
+                flag = true;
+                sampleHoleNumErr.append(" A 孔位数量不为"+AssayHoleNum.A.getHoleNum()+",");
+            }
+            if(b != 0 && AssayHoleNum.B.getHoleNum() != b){
+                flag = true;
+                sampleHoleNumErr.append(" B 孔位数量不为"+AssayHoleNum.B.getHoleNum()+",");
+            }
+            if(c != 0 && AssayHoleNum.C.getHoleNum() != c){
+                flag = true;
+                sampleHoleNumErr.append(" C 孔位数量不为"+AssayHoleNum.C.getHoleNum()+",");
+            }
+            if(d != 0 && AssayHoleNum.D.getHoleNum() != d){
+                flag = true;
+                sampleHoleNumErr.append(" D 孔位数量不为"+AssayHoleNum.D.getHoleNum()+",");
+            }
+            if(e != 0 && AssayHoleNum.E.getHoleNum() != e){
+                flag = true;
+                sampleHoleNumErr.append(" E 孔位数量不为"+AssayHoleNum.E.getHoleNum()+",");
+            }
+            if(f != 0 && AssayHoleNum.F.getHoleNum() != f){
+                flag = true;
+                sampleHoleNumErr.append(" F 孔位数量不为"+AssayHoleNum.F.getHoleNum()+",");
+            }
+            if(g != 0 && AssayHoleNum.G.getHoleNum() != g){
+                flag = true;
+                sampleHoleNumErr.append(" G 孔位数量不为"+AssayHoleNum.G.getHoleNum()+",");
+            }
+            if(cnv != 0 && AssayHoleNum.CNV.getHoleNum() != cnv){
+                flag = true;
+                sampleHoleNumErr.append(" CNV 孔位数量不为"+AssayHoleNum.CNV.getHoleNum()+",");
+            }
+            if(flag){
+                sampleHoleNumErr.insert(0,entry.getKey().toString());
+                holeNumErr.append(sampleHoleNumErr);
+            }
+            List<NyuenResultCheck> errorList = nyuenResultCheckMapper.getCallResultErrorBySampleNums(groupResultCheckList);
+
+            if(null != errorList && errorList.size()>0){
+                for(NyuenResultCheck resultCheck : errorList){
+                    callResultErrSamples.add(resultCheck.getSampleInfo());
+                    callResultErr.append("样本 ").append(resultCheck.getSampleInfo()).append(" AssayId为 ").append(resultCheck.getAssayId())
+                            .append(" 存在多种检测结果： ").append(resultCheck.getCallResult()).append(" 。");
+                }
+            }
+        }
     }
 
     private Result dealTaskNodeByExcel(List<SampleRowAndCell> sampleRowAndCellList, String assignee, String procDefId, String nodeName){
@@ -321,14 +574,14 @@ public class ProcessController {
 //        cnvErr.add("45 6");
 //        cnvErr.add("45 6");
 //        cnvErr.add("887");
-        experimentalDataRowList.stream().filter(experimentalDataRow -> "CNV".equals(experimentalDataRow.getMethodology()))
-                .collect(Collectors.toList())
-                .stream().map(experimentalDataRow -> {
-            cnvErr.add(experimentalDataRow.getSampleNum());
-            return cnvErr;
-        }).collect(Collectors.toList());
-        List<String> s = cnvErr.stream().distinct().collect(Collectors.toList());
-        System.out.println(s.toString());
+//        experimentalDataRowList.stream().filter(experimentalDataRow -> "CNV".equals(experimentalDataRow.getMethodology()))
+//                .collect(Collectors.toList())
+//                .stream().map(experimentalDataRow -> {
+//            cnvErr.add(experimentalDataRow.getSampleNum());
+//            return cnvErr;
+//        }).collect(Collectors.toList());
+//        List<String> s = cnvErr.stream().distinct().collect(Collectors.toList());
+        System.out.println("[NY211920509A,NY211920509A]".substring(1,"[NY211920509A,NY211920509A]".length()-1));
 
 
 

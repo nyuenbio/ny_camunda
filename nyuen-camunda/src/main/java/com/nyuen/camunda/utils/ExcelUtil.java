@@ -140,7 +140,7 @@ public class ExcelUtil {
             cell.setCellValue(header[i]);
             cell.setCellStyle(HeaderStyle(wb));
         }
-        //{"样本编号", "产品名称", "孔位", "孔位编号", "ASSAY编号","创建时间"}
+        //{"样本编号", "产品名称", "孔位", "孔位编号", "ASSAY编号","创建时间","备注"}
         for (int i = 0; i < content.size(); i++) {
             row = sheet.createRow((int) i + 1);
             row.setHeight((short) 500);
@@ -162,6 +162,9 @@ public class ExcelUtil {
             org.apache.poi.ss.usermodel.Cell cell5 = row.createCell(5);
             cell5.setCellValue(DateUtil.DateToString(content.get(i).getCreateTime(),"yyyy-MM-dd hh:mm:ss"));
             cell5.setCellStyle(contentStyle(wb));
+            org.apache.poi.ss.usermodel.Cell cell6 = row.createCell(6);
+            cell6.setCellValue(content.get(i).getRemark());
+            cell6.setCellStyle(contentStyle(wb));
         }
 //        if (request.getHeader("User-Agent").toLowerCase().indexOf("firefox") > 0) {
 //            title = new String(title.getBytes("UTF-8"), "ISO8859-1"); // firefox浏览器

@@ -17,4 +17,6 @@ public interface SampleLabInfoService {
     void addSampleLanInfo(SampleLabInfo sampleLabInfo);
 
     List<SampleLabInfo> getSampleLabInfoList(List<String> procInstIdList);
+
+    SampleLabInfo getLastSampleLabInfoBySampleNum(String sampleInfo);
 }
