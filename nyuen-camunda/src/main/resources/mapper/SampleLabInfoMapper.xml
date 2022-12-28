@@ -300,7 +300,7 @@
   <!--自定义部分-->
   <select id="getSampleLabInfoList" parameterType="java.lang.String" resultMap="BaseResultMap">
     select
-        sample_info, node_name, product_name, hole_num, hole_code, assay_code, create_time
+        <include refid="Base_Column_List"></include>
     from sample_lab_info
     where
         proc_inst_id in
@@ -311,7 +311,7 @@
 
   <select id="getLastSampleLabInfoBySampleNum" parameterType="java.lang.String" resultMap="BaseResultMap">
     select
-        sample_info, node_name, product_name, hole_num, hole_code, assay_code, create_time
+        <include refid="Base_Column_List"></include>
     from sample_lab_info
     where
         sample_info =#{sampleInfo,jdbcType=VARCHAR}
