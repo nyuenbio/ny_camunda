@@ -36,4 +36,9 @@ public class SampleLabInfoServiceImpl implements SampleLabInfoService {
     public SampleLabInfo getLastSampleLabInfoBySampleNum(String sampleInfo) {
         return sampleLabInfoMapper.getLastSampleLabInfoBySampleNum(sampleInfo);
     }
+
+    @Override
+    public void updateSampleLabInfo(SampleLabInfo sampleLabInfo) {
+        sampleLabInfoMapper.updateByPrimaryKeySelective(sampleLabInfo);
+    }
 }

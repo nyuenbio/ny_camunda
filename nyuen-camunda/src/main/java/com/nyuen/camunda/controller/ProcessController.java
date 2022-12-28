@@ -390,35 +390,35 @@ public class ProcessController {
             boolean flag = false;
             if(a !=0 && AssayHoleNum.A.getHoleNum() != a){
                 flag = true;
-                sampleHoleNumErr.append(" A 孔位数量不为"+AssayHoleNum.A.getHoleNum()+",");
+                sampleHoleNumErr.append(" A 孔位数量不为").append(AssayHoleNum.A.getHoleNum()).append(",");
             }
             if(b != 0 && AssayHoleNum.B.getHoleNum() != b){
                 flag = true;
-                sampleHoleNumErr.append(" B 孔位数量不为"+AssayHoleNum.B.getHoleNum()+",");
+                sampleHoleNumErr.append(" B 孔位数量不为").append(AssayHoleNum.B.getHoleNum()).append(",");
             }
             if(c != 0 && AssayHoleNum.C.getHoleNum() != c){
                 flag = true;
-                sampleHoleNumErr.append(" C 孔位数量不为"+AssayHoleNum.C.getHoleNum()+",");
+                sampleHoleNumErr.append(" C 孔位数量不为").append(AssayHoleNum.C.getHoleNum()).append(",");
             }
             if(d != 0 && AssayHoleNum.D.getHoleNum() != d){
                 flag = true;
-                sampleHoleNumErr.append(" D 孔位数量不为"+AssayHoleNum.D.getHoleNum()+",");
+                sampleHoleNumErr.append(" D 孔位数量不为").append(AssayHoleNum.D.getHoleNum()).append(",");
             }
             if(e != 0 && AssayHoleNum.E.getHoleNum() != e){
                 flag = true;
-                sampleHoleNumErr.append(" E 孔位数量不为"+AssayHoleNum.E.getHoleNum()+",");
+                sampleHoleNumErr.append(" E 孔位数量不为").append(AssayHoleNum.E.getHoleNum()).append(",");
             }
             if(f != 0 && AssayHoleNum.F.getHoleNum() != f){
                 flag = true;
-                sampleHoleNumErr.append(" F 孔位数量不为"+AssayHoleNum.F.getHoleNum()+",");
+                sampleHoleNumErr.append(" F 孔位数量不为").append(AssayHoleNum.F.getHoleNum()).append(",");
             }
             if(g != 0 && AssayHoleNum.G.getHoleNum() != g){
                 flag = true;
-                sampleHoleNumErr.append(" G 孔位数量不为"+AssayHoleNum.G.getHoleNum()+",");
+                sampleHoleNumErr.append(" G 孔位数量不为").append(AssayHoleNum.G.getHoleNum()).append(",");
             }
             if(cnv != 0 && AssayHoleNum.CNV.getHoleNum() != cnv){
                 flag = true;
-                sampleHoleNumErr.append(" CNV 孔位数量不为"+AssayHoleNum.CNV.getHoleNum()+",");
+                sampleHoleNumErr.append(" CNV 孔位数量不为").append(AssayHoleNum.CNV.getHoleNum()).append(",");
             }
             if(flag){
                 sampleHoleNumErr.insert(0,entry.getKey().toString());
@@ -581,8 +581,6 @@ public class ProcessController {
 //            return cnvErr;
 //        }).collect(Collectors.toList());
 //        List<String> s = cnvErr.stream().distinct().collect(Collectors.toList());
-        System.out.println("[NY211920509A,NY211920509A]".substring(1,"[NY211920509A,NY211920509A]".length()-1));
-
 
 
     }

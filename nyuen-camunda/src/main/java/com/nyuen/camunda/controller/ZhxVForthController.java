@@ -162,8 +162,65 @@ public class ZhxVForthController {
                 result.append("样本").append(sampleLabInfo.getSampleInfo()).append("原套餐位点为（").append(sampleLabInfo.getHoleCode()).append("#").append(holeCodes).append(")")
                         .append("，现追加套餐位点为（").append(srBean.getProductName()).append("#").append(holeCodes).append("。");
             }
+
         }
         return ResultFactory.buildResult(200, result.length()>0?result.toString():"孔位无变化","");
+    }
+
+    //追加套餐样本发起流程 remark添加追加的套餐和孔位
+    @ApiOperation(value = "追加套餐样本发起流程",httpMethod = "POST")
+    @PostMapping("/appendSampleBatchStartProcess")
+    public Result appendSampleBatchStartProcess(@RequestBody BatchStartProcessBean batchStartProcessBean){
+        String initiator = batchStartProcessBean.getInitiator();
+        String procDefId = batchStartProcessBean.getProcDefId();
+        for(SampleReceiveBean srBean : batchStartProcessBean.getSampleReceiveList()) {
+            SampleLabInfo sampleLabInfo = sampleLabInfoService.getLastSampleLabInfoBySampleNum(srBean.getSampleInfo());
+            if(null == sampleLabInfo){
+                return ResultFactory.buildFailResult("该样本位点信息不存在！");
+            }
+            if(sampleLabInfo.getProductName().equals(srBean.getProductName())){
+                break;
+            }
+            List<SampleSiteRule> sampleSiteRuleList = sampleSiteRuleService.getHoleAndAssayByProductName(Arrays.asList(srBean.getProductName().split(",")));
+            LinkedHashSet<String> holeCodesSet = new LinkedHashSet<>();
+            LinkedHashSet<String> assayCodesSet = new LinkedHashSet<>();
+            if(sampleSiteRuleList != null && sampleSiteRuleList.size()>0) {
+                List<SampleSiteRule> resultList = sampleSiteRuleList.stream().map(m -> {
+                    List<String> hole = Arrays.asList(m.getHoleCode().split(","));
+                    holeCodesSet.addAll(hole);
+                    List<String> assay = Arrays.asList(m.getAssayCode().split(","));
+                    assayCodesSet.addAll(assay);
+                    return m;
+                }).collect(Collectors.toList());
+            }
+            String holeCodes = holeCodesSet.toString().substring(1, holeCodesSet.toString().length() - 1);
+            String assayCodes = assayCodesSet.toString().substring(1, assayCodesSet.toString().length() - 1);
+            if(!sampleLabInfo.getHoleCode().equals(holeCodes)){
+                String appendHoles = holeCodes.replace(sampleLabInfo.getHoleCode(),"");
+                String appendProduct = srBean.getProductName().replace(sampleLabInfo.getProductName(),"");
+                String appendAssayCodes = assayCodes.replace(sampleLabInfo.getAssayCode(),"");
+                // 发起追加样本流程
+                // 更新remark添加追加的套餐和孔位
+                Map<String, Object> variables = new HashMap<>();
+                variables.put("套餐名称", appendProduct);
+                variables.put("孔位", appendHoles.replace(",","").length());
+                variables.put("对应编码", appendHoles);
+                variables.put("ASSAY编号", appendAssayCodes);
+                ProcessInstance pi = runtimeService.startProcessInstanceById(procDefId, srBean.getSampleInfo(), variables);
+                SampleLabInfo sampleLabInfo1 = new SampleLabInfo();
+                sampleLabInfo1.setId(sampleLabInfo.getId());
+                sampleLabInfo1.setProcInstId(pi.getId());// 导出孔位信息时，需根据该字段导出,所以需要更新
+                sampleLabInfo1.setProductName(srBean.getProductName());
+                String appendRemark = sampleLabInfo.getRemark() +"。"+
+                        "追加孔位[" + appendHoles + "] " +
+                        ",追加套餐[" + appendProduct + "] " +
+                        ",追加发起人[" + initiator + "] " +
+                        ",原procInstId [" + sampleLabInfo.getProcInstId() + "] ";
+                sampleLabInfo1.setRemark(appendRemark);
+                sampleLabInfoService.updateSampleLabInfo(sampleLabInfo1);
+            }
+        }
+        return ResultFactory.buildSuccessResult(null);
     }
 
     public static void main(String[] args) {
