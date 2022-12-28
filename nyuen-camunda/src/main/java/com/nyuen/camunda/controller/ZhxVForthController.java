@@ -176,7 +176,7 @@ public class ZhxVForthController {
         for(SampleReceiveBean srBean : batchStartProcessBean.getSampleReceiveList()) {
             SampleLabInfo sampleLabInfo = sampleLabInfoService.getLastSampleLabInfoBySampleNum(srBean.getSampleInfo());
             if(null == sampleLabInfo){
-                return ResultFactory.buildFailResult("该样本位点信息不存在！");
+                return ResultFactory.buildFailResult(srBean.getSampleInfo()+"该样本位点信息不存在！");
             }
             if(sampleLabInfo.getProductName().equals(srBean.getProductName())){
                 break;
