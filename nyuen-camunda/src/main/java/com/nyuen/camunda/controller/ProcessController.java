@@ -108,7 +108,7 @@ public class ProcessController {
         }
         // 得到相同样本编号归类后的Excel表格数据
         List<SampleRowAndCell> sampleRowAndCellList = (List<SampleRowAndCell>) result1.getData();
-        // 1、校验表格 V3版本规则
+        // 1、校验表格 V4版本规则
         Result checkResult = experimentDataCheckV42(sampleRowAndCellList, nodeName, assignee, multipartFile.getOriginalFilename(),request);
         if(StringUtils.isNotEmpty(checkResult.getMessage())){
             return checkResult;
@@ -126,8 +126,8 @@ public class ProcessController {
         experimentDataService.addExperimentData(experimentData);
         //}
         // 3、处理流程节点
-        //return dealTaskNodeByExcel(sampleRowAndCellList,assignee,procDefId,nodeName);
-        return ResultFactory.buildSuccessResult("");
+        return dealTaskNodeByExcel(sampleRowAndCellList,assignee,procDefId,nodeName);
+        //return ResultFactory.buildSuccessResult("");
     }
 
     private Result experimentDataCheckV3(List<SampleRowAndCell> sampleRowAndCellList,String nodeName){
@@ -261,7 +261,8 @@ public class ProcessController {
         StringBuilder callResultErr = new StringBuilder();
         List<String> callResultErrSamples = new ArrayList<>();
         List<ExperimentalDataRowNew> experimentalDataRowList = new ArrayList<>();
-        // 避免重复数据 todo
+        // 避免再次上传时重复数据 todo
+        // （1）根据样本编号批量删除nyuenResultCheck表
         nyuenResultCheckMapper.delResultBySampleInfo(sampleRowAndCellList);
         for(SampleRowAndCell sampleRowAndCell: sampleRowAndCellList){
             List<List<String>> sampleRowList = sampleRowAndCell.getSampleRowList();
@@ -288,9 +289,9 @@ public class ProcessController {
                 nyuenResultCheckMapper.insertSelective(resultCheck);
             }
         }
-        // （1）批量更新nyuenResultCheck表的rs号 todo 添加事务?
+        // （2）批量更新nyuenResultCheck表的rs号 todo 添加事务?
         nyuenResultCheckMapper.updateSnpInfo(sampleRowAndCellList);
-        // （2）校验相同rs号的结果，校验各类型孔位的位点数
+        // （3）校验相同rs号的结果，校验各类型孔位的位点数
         checkHoleNumAndCallResult(sampleRowAndCellList,holeNumErr,callResultErrSamples,callResultErr);
         if(callResultErr.length()>0) {
             Map<String, Object> map = new HashMap<>();
@@ -428,9 +429,14 @@ public class ProcessController {
 
             if(null != errorList && errorList.size()>0){
                 for(NyuenResultCheck resultCheck : errorList){
-                    callResultErrSamples.add(resultCheck.getSampleInfo());
-                    callResultErr.append("样本 ").append(resultCheck.getSampleInfo()).append(" AssayId为 ").append(resultCheck.getAssayId())
-                            .append(" 存在多种检测结果： ").append(resultCheck.getCallResult()).append(" 。");
+                    String[] callResults = resultCheck.getCallResult().split(",");
+                    LinkedHashSet unDumpCall = new LinkedHashSet();
+                    unDumpCall.addAll(Arrays.asList(callResults));
+                    if(unDumpCall.size()>1) {
+                        callResultErrSamples.add(resultCheck.getSampleInfo());
+                        callResultErr.append("样本 ").append(resultCheck.getSampleInfo()).append(" AssayId为 ").append(resultCheck.getAssayId())
+                                .append(" 存在多种检测结果： ").append(resultCheck.getCallResult()).append(" 。");
+                    }
                 }
             }
         }
@@ -582,6 +588,14 @@ public class ProcessController {
 //        }).collect(Collectors.toList());
 //        List<String> s = cnvErr.stream().distinct().collect(Collectors.toList());
 
+        String[] callResults = ("CT,CT,AG").split(",");
+        LinkedHashSet unDumpCall = new LinkedHashSet();
+        unDumpCall.addAll(Arrays.asList(callResults));
+        Iterator it = unDumpCall.iterator();
+        while (it.hasNext()){
+
+            System.out.println(it.next());
+        }
 
     }
 

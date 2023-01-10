@@ -31,3 +31,5 @@ logging:
 file:
   saveRootPath: /share_data/clin_result/clin_laboratory/camunda-file/
   readRootPath: http://report.nyuen-group.com:8078/clin_laboratory/camunda-file/
+
+operationLogService: http://report.nyuen-group.com:8300/api-report/oplog/addOperationLog

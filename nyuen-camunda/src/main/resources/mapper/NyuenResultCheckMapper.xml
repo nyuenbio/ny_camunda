@@ -206,7 +206,7 @@
     </foreach>
   </select>
   <select id="getCallResultErrorBySampleNums" parameterType="com.nyuen.camunda.domain.po.NyuenResultCheck" resultMap="BaseResultMap">
-    SELECT a.sample_info,a.assay_id,GROUP_CONCAT(a.call_result) as call_result
+    SELECT a.sample_info,GROUP_CONCAT(a.assay_id) as assay_id,GROUP_CONCAT(a.call_result) as call_result
     from (
     SELECT * from nyuen_result_check
     where sample_info in

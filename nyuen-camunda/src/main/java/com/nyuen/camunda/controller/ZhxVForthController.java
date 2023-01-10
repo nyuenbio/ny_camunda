@@ -92,7 +92,7 @@ public class ZhxVForthController {
                         assayCodesSet.addAll(assay);
                         cnvState.set(cnvState.intValue() | m.getState());
                         return m;
-                    }).collect(Collectors.toList());
+                    }).collect(Collectors.toList());//[A,B,C]
                     String holeCodes = holeCodesSet.toString().substring(1, holeCodesSet.toString().length() - 1);
                     String assayCodes = assayCodesSet.toString().substring(1, assayCodesSet.toString().length() - 1);
 
@@ -141,7 +141,7 @@ public class ZhxVForthController {
         for(SampleReceiveBean srBean : batchStartProcessBean.getSampleReceiveList()) {
             SampleLabInfo sampleLabInfo = sampleLabInfoService.getLastSampleLabInfoBySampleNum(srBean.getSampleInfo());
             if(null == sampleLabInfo){
-                return ResultFactory.buildFailResult("该样本位点信息不存在！");
+                return ResultFactory.buildFailResult(srBean.getSampleInfo()+"该样本还未发起实验流程，无需追加实验！");
             }
             if(sampleLabInfo.getProductName().equals(srBean.getProductName())){
                 break;
@@ -149,7 +149,6 @@ public class ZhxVForthController {
             List<SampleSiteRule> sampleSiteRuleList = sampleSiteRuleService.getHoleAndAssayByProductName(Arrays.asList(srBean.getProductName().split(",")));
             LinkedHashSet<String> holeCodesSet = new LinkedHashSet<>();
             if(sampleSiteRuleList != null && sampleSiteRuleList.size()>0) {
-
                 List<SampleSiteRule> resultList = sampleSiteRuleList.stream().map(m -> {
                     List<String> hole = Arrays.asList(m.getHoleCode().split(","));
                     holeCodesSet.addAll(hole);
@@ -253,9 +252,10 @@ public class ZhxVForthController {
             return m;
         }).collect(Collectors.toList());
 
-        System.out.println(holeCodes.toString().substring(1,holeCodes.toString().length()-1));
-        System.out.println(assayCodes.toString());
-        System.out.println(cnvState);
+
+        LinkedHashSet<String> holeCodesSet = new LinkedHashSet<>();
+
+        System.out.println(holeCodesSet.toString()+"==> "+holeCodesSet.toString().substring(1, holeCodesSet.toString().length() - 1));
     }
 
 }
