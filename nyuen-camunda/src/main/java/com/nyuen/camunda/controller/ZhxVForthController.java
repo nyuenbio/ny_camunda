@@ -158,7 +158,7 @@ public class ZhxVForthController {
             }
             String holeCodes = holeCodesSet.toString().substring(1, holeCodesSet.toString().length() - 1);
             if(!sampleLabInfo.getHoleCode().equals(holeCodes)){
-                result.append("样本").append(sampleLabInfo.getSampleInfo()).append("原套餐位点为（").append(sampleLabInfo.getHoleCode()).append("#").append(holeCodes).append(")")
+                result.append("样本").append(sampleLabInfo.getSampleInfo()).append("原套餐位点为（").append(sampleLabInfo.getProductName()).append("#").append(sampleLabInfo.getHoleCode()).append(")")
                         .append("，现追加套餐位点为（").append(srBean.getProductName()).append("#").append(holeCodes).append("。");
             }
 
