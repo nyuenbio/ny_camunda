@@ -160,7 +160,7 @@ public class ExcelUtil {
             cell4.setCellValue(content.get(i).getAssayCode());
             cell4.setCellStyle(contentStyle(wb));
             org.apache.poi.ss.usermodel.Cell cell5 = row.createCell(5);
-            cell5.setCellValue(DateUtil.DateToString(content.get(i).getCreateTime(),"yyyy-MM-dd hh:mm:ss"));
+            cell5.setCellValue(DateUtil.DateToString(content.get(i).getCreateTime(),"yyyy-MM-dd HH:mm:ss"));
             cell5.setCellStyle(contentStyle(wb));
             org.apache.poi.ss.usermodel.Cell cell6 = row.createCell(6);
             cell6.setCellValue(content.get(i).getRemark());
