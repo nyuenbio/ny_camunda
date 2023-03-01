@@ -309,4 +309,31 @@
     </if>
   </update>
 
+  <!--获取样本存储列表-->
+  <select id="getSampleStorageList" parameterType="java.util.HashMap" resultMap="BaseResultMap">
+    select <include refid="Base_Column_List"></include>
+    from sample_storage
+    <where>
+      <if test="sampleNum != null and sampleNum != ''">
+        sample_num like concat('%',#{sampleNum,jdbcType=VARCHAR},'%')
+      </if>
+      <if test="sampleStorageState != 0">
+        sample_storage_state = #{sampleStorageState,jdbcType=INTEGER}
+      </if>
+    </where>
+    limit #{statrIndex},#{pageSize}
+  </select>
+  <select id="getSampleStorageTotal" parameterType="java.util.HashMap" resultType="java.lang.Integer">
+    select count(id)
+    from sample_storage
+    <where>
+      <if test="sampleNum != null and sampleNum != ''">
+        sample_num like concat('%',#{sampleNum,jdbcType=VARCHAR},'%')
+      </if>
+      <if test="sampleStorageState != 0">
+        sample_storage_state = #{sampleStorageState,jdbcType=INTEGER}
+      </if>
+    </where>
+  </select>
+
 </mapper>

@@ -4,6 +4,7 @@ import com.nyuen.camunda.domain.po.NyuenResultCheck;
 import com.nyuen.camunda.domain.vo.SampleRowAndCell;
 
 import java.util.List;
+import java.util.Map;
 
 public interface NyuenResultCheckMapper {
     /**
@@ -66,5 +67,9 @@ public interface NyuenResultCheckMapper {
     List<NyuenResultCheck> getSnpInfoBySampleNums(List<SampleRowAndCell> list);
 
     List<NyuenResultCheck> getCallResultErrorBySampleNums(List<NyuenResultCheck> list);
+
+    List<NyuenResultCheck> getNyuenResultCheckByCondition(Map<String,Object> params);
+
+    int getNyuenResultCheckCountByCondition(Map<String,Object> params);
 
 }

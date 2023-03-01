@@ -179,4 +179,14 @@
       remark1 = #{remark1,jdbcType=VARCHAR}
     where id = #{id,jdbcType=INTEGER}
   </update>
+
+  <!--自定义部分-->
+
+  <!--根据样本编号获取样本操作记录-->
+  <select id="getSampleStorageOperation" resultType="java.lang.String" resultMap="BaseResultMap">
+    select <include refid="Base_Column_List"></include>
+    from sample_storage_operation
+    where sample_num=#{sampleNum,jdbcType=VARCHAR}
+  </select>
+
 </mapper>

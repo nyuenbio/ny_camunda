@@ -7,6 +7,7 @@ import com.nyuen.camunda.service.LabFridgeService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.web.bind.annotation.*;
+import springfox.documentation.annotations.ApiIgnore;
 
 import javax.annotation.Resource;
 
@@ -30,6 +31,7 @@ public class FridgeController {
         return ResultFactory.buildSuccessResult(labFridgeService.getAllLabFridgeList());
     }
 
+    @ApiIgnore
     @ApiOperation(value = "更新冰箱状态（1开启、0未开启,冰箱id必传）", httpMethod = "POST")
     @PostMapping("/updateFridgeState")
     public Result updateFridgeState(@RequestBody LabFridge labFridge){

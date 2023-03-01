@@ -1,7 +1,10 @@
 package com.nyuen.camunda.service;
 
+import com.nyuen.camunda.common.PageBean;
 import com.nyuen.camunda.domain.po.SampleStorage;
 import com.nyuen.camunda.domain.vo.SampleStoreOperateVo;
+
+import java.util.Map;
 
 /**
  * TODO
@@ -17,5 +20,7 @@ public interface SampleStorageService {
     void addSampleStorage(SampleStorage sampleStorage);
 
     void sampleStoreOperate(SampleStoreOperateVo sampleStoreOperateVo);
+
+    PageBean getSampleStorageList(Map<String,Object> params);
 
 }

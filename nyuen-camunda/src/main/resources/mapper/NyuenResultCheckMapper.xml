@@ -219,5 +219,42 @@
     ORDER BY a.sample_info,a.snp
   </select>
 
+  <select id="getNyuenResultCheckByCondition" parameterType="java.util.HashMap" resultMap="BaseResultMap">
+    select <include refid="Base_Column_List"></include>
+    from nyuen_result_check
+    <where>
+      <if test="snp != null and snp != ''">
+        and snp = #{snp,jdbcType=VARCHAR}
+      </if>
+      <if test="sampleInfo != null and sampleInfo != ''">
+        and sample_info = #{sampleInfo,jdbcType=VARCHAR}
+      </if>
+      <if test="createTimeStart != null">
+        and DATE_FORMAT(create_time, '%Y-%m-%d %H:%i:%S') &gt;= DATE_FORMAT(#{createTimeStart}, '%Y-%m-%d %H:%i:%S')
+      </if>
+      <if test="createTimeEnd != null">
+        and DATE_FORMAT(create_time, '%Y-%m-%d %H:%i:%S') &lt;= DATE_FORMAT(#{createTimeEnd}, '%Y-%m-%d %H:%i:%S')
+      </if>
+    </where>
+    limit #{startIndex},#{pageSize}
+  </select>
+  <select id="getNyuenResultCheckCountByCondition" parameterType="java.util.HashMap" resultType="java.lang.Integer">
+    select count(id)
+    from nyuen_result_check
+    <where>
+      <if test="snp != null and snp != ''">
+        and snp = #{snp,jdbcType=VARCHAR}
+      </if>
+      <if test="sampleInfo != null and sampleInfo != ''">
+        and sample_info = #{sampleInfo,jdbcType=VARCHAR}
+      </if>
+      <if test="createTimeStart != null">
+        and DATE_FORMAT(create_time, '%Y-%m-%d %H:%i:%S') &gt;= DATE_FORMAT(#{createTimeStart}, '%Y-%m-%d %H:%i:%S')
+      </if>
+      <if test="createTimeEnd != null">
+        and DATE_FORMAT(create_time, '%Y-%m-%d %H:%i:%S') &lt;= DATE_FORMAT(#{createTimeEnd}, '%Y-%m-%d %H:%i:%S')
+      </if>
+    </where>
+  </select>
 
 </mapper>

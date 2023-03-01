@@ -1,10 +1,12 @@
 package com.nyuen.camunda.service.impl;
 
+import com.nyuen.camunda.domain.po.SampleStorageOperation;
 import com.nyuen.camunda.mapper.SampleStorageOperationMapper;
 import com.nyuen.camunda.service.SampleStorageOperationService;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
+import java.util.List;
 
 /**
  * TODO
@@ -19,5 +21,13 @@ public class SampleStorageOperationServiceImpl implements SampleStorageOperation
     private SampleStorageOperationMapper sampleStorageOperationMapper;
 
 
+    @Override
+    public void addSampleStorageOperation(SampleStorageOperation sampleStorageOperation) {
+        sampleStorageOperationMapper.insertSelective(sampleStorageOperation);
+    }
 
+    @Override
+    public List<SampleStorageOperation> getSampleStorageOperation(String sampleNum) {
+        return sampleStorageOperationMapper.getSampleStorageOperation(sampleNum);
+    }
 }

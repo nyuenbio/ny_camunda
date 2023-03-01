@@ -15,18 +15,27 @@ public enum SampleTypeEnums {
         return description;
     }
 
-    public static String getDescByCode(String code){
+    public static String getDescByCode(String str){
         for(SampleTypeEnums ste : SampleTypeEnums.values()){
-            if(code.equals(ste.toString())){
+            if(ste.toString().equals(str)){
                 return ste.getDescription();
             }
         }
         return null;
     }
 
+    public static boolean contains(String str){
+        for(SampleTypeEnums ste : SampleTypeEnums.values()){
+            if(ste.toString().equals(str)){
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static void main(String[] args) {
         System.out.println(SampleTypeEnums.B.toString());
 
-        System.out.println(getDescByCode("S"));
+        System.out.println(contains("W"));
     }
 }
