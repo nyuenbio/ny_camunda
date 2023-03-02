@@ -159,7 +159,7 @@
   <select id="getLabFridgeByNo" parameterType="java.lang.String" resultMap="BaseResultMap">
     select <include refid="Base_Column_List"></include>
     from lab_fridge
-    where firdge_no=#{fridgeNo,jdbcType=VARCHAR}
+    where fridge_no=#{fridgeNo,jdbcType=VARCHAR}
   </select>
 
   <select id="getAllLabFridges" parameterType="java.lang.String" resultMap="BaseResultMap">

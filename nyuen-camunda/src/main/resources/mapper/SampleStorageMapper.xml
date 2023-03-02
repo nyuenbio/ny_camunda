@@ -321,7 +321,7 @@
         sample_storage_state = #{sampleStorageState,jdbcType=INTEGER}
       </if>
     </where>
-    limit #{statrIndex},#{pageSize}
+    limit #{startIndex},#{pageSize}
   </select>
   <select id="getSampleStorageTotal" parameterType="java.util.HashMap" resultType="java.lang.Integer">
     select count(id)

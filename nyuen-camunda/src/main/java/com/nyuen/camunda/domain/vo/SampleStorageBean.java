@@ -11,7 +11,10 @@ import lombok.Data;
  * @date 2023/3/1
  */
 @Data
-public class SampleStorageBean extends BaseBean {
+public class SampleStorageBean {
+    private Integer currentPage;
+    private Integer pageSize;
     private String sampleNum;
     private int sampleStorageState;
+
 }

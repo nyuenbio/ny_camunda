@@ -13,7 +13,10 @@ import java.util.Date;
  * @date 2023/3/1
  */
 @Data
-public class NyuenResultCheckVo extends BaseBean {
+public class NyuenResultCheckVo {
+    private Integer currentPage;
+    private Integer pageSize;
+
     private Integer id;
 
     private String sampleInfo;

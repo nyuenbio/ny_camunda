@@ -108,6 +108,7 @@ public class SampleStorageController {
                 return ResultFactory.buildFailResult("层级数据重复！");
             }
             sampleType = labFridgeLevels.get(0).getSampleType();//获取现有层级样本类型
+            return ResultFactory.buildResult(200, "已有层级", sampleType);
         }else { // 新的层级
             if(StringUtil.isEmpty(sampleType)){
                 return ResultFactory.buildFailResult("选择新层级时，样本类型不能为空！");
@@ -125,8 +126,8 @@ public class SampleStorageController {
             lfl.setCreateUserName(loginUserName);
             lfl.setCreateTime(new Date());
             labFridgeLevelService.addLabFridgeLevel(lfl);
+            return ResultFactory.buildResult(200, "新的层级", sampleType);
         }
-        return ResultFactory.buildSuccessResult(sampleType);
     }
 
     //启动盒子数量，自动生成保存位置：（冰箱+层级+盒子类型、数量 --> 孔位）
