@@ -110,6 +110,9 @@ public class SampleStorageController {
             sampleType = labFridgeLevels.get(0).getSampleType();//获取现有层级样本类型
             return ResultFactory.buildResult(200, "已有层级", sampleType);
         }else { // 新的层级
+            if (labFridgeLevels != null && labFridgeLevels.size() > 0) {
+                return ResultFactory.buildFailResult("该层级已开启，请核实编码！");
+            }
             if(StringUtil.isEmpty(sampleType)){
                 return ResultFactory.buildFailResult("选择新层级时，样本类型不能为空！");
             }
