@@ -314,11 +314,14 @@
     select <include refid="Base_Column_List"></include>
     from sample_storage
     <where>
-      <if test="sampleNum != null and sampleNum != ''">
-        sample_num like concat('%',#{sampleNum,jdbcType=VARCHAR},'%')
+      <if test="sampleNumList != null ">
+        and sample_num in
+        <foreach collection="sampleNumList" index="index" item="item" open="(" separator="," close=")">
+          #{item}
+        </foreach>
       </if>
       <if test="sampleStorageState != 0">
-        sample_storage_state = #{sampleStorageState,jdbcType=INTEGER}
+        and sample_storage_state = #{sampleStorageState,jdbcType=INTEGER}
       </if>
     </where>
     limit #{startIndex},#{pageSize}
@@ -327,11 +330,14 @@
     select count(id)
     from sample_storage
     <where>
-      <if test="sampleNum != null and sampleNum != ''">
-        sample_num like concat('%',#{sampleNum,jdbcType=VARCHAR},'%')
+      <if test="sampleNumList != null ">
+        and sample_num in
+        <foreach collection="sampleNumList" index="index" item="item" open="(" separator="," close=")">
+          #{item}
+        </foreach>
       </if>
       <if test="sampleStorageState != 0">
-        sample_storage_state = #{sampleStorageState,jdbcType=INTEGER}
+        and sample_storage_state = #{sampleStorageState,jdbcType=INTEGER}
       </if>
     </where>
   </select>

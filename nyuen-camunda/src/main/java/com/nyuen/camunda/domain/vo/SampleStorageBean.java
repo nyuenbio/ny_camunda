@@ -3,6 +3,8 @@ package com.nyuen.camunda.domain.vo;
 import com.nyuen.camunda.common.BaseBean;
 import lombok.Data;
 
+import java.util.List;
+
 /**
  * TODO
  *
@@ -14,7 +16,7 @@ import lombok.Data;
 public class SampleStorageBean {
     private Integer currentPage;
     private Integer pageSize;
-    private String sampleNum;
+    private List<String> sampleNumList;
     private int sampleStorageState;
 
 }
