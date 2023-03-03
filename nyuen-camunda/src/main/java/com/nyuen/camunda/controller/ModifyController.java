@@ -10,8 +10,12 @@ import org.camunda.bpm.engine.HistoryService;
 import org.camunda.bpm.engine.RuntimeService;
 import org.camunda.bpm.engine.TaskService;
 import org.camunda.bpm.engine.history.HistoricActivityInstance;
+import org.camunda.bpm.engine.history.HistoricProcessInstance;
 import org.camunda.bpm.engine.runtime.ActivityInstance;
+import org.camunda.bpm.engine.runtime.ProcessInstance;
 import org.camunda.bpm.engine.task.Task;
+import org.springframework.util.CollectionUtils;
+import org.springframework.util.ObjectUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
@@ -212,11 +216,81 @@ public class ModifyController {
         return null;
     }
 
-    @DeleteMapping("/deleteTask")
-    public Result deleteTask(@ApiParam("任务id") String taskId){
+    @ApiOperation(value = "(任务发起人)撤回用户任务", httpMethod = "GET")
+    @GetMapping("/withdraw")
+    public Result withdraw(String processId,String userId){
+        // 1、验证：当前流程实例状态；当前执行人为发起人
+        // 2、取消：取消产生的任务，查找并取消
+        // 3、删除此流程实例
+
 
 
         return ResultFactory.buildSuccessResult(null);
+    }
+
+    @ApiOperation(value = "撤销用户任务(未测试)", httpMethod = "DELETE")
+    @DeleteMapping("/cancelTask")
+    public Result cancelTask(String procId,@ApiParam("当前用户id") String userId){
+        // 撤销用户任务 todo
+        // 1、验证 流程任务状态，当前执行人为发起人
+        if(!checkProcessStarter(procId,userId)){
+            return ResultFactory.buildFailResult("撤回失败：当前执行人不是流程发起人，请核实！");
+        }
+        if(!checkProcessInstanceState(procId)){
+            return ResultFactory.buildFailResult("撤回失败：流程并未在流转中或流程已结束，请核实！");
+        }
+        List<Task> taskList = taskService.createTaskQuery().processInstanceId(procId).list();
+        if(CollectionUtils.isEmpty(taskList)){
+            return ResultFactory.buildFailResult("撤回失败：该流程上无任务流转，请核实！");
+        }
+        Task task = taskList.get(0);
+        List<HistoricActivityInstance> historicActivityInstanceList = historyService.createHistoricActivityInstanceQuery()
+                .processInstanceId(task.getProcessInstanceId())
+                .activityType("userTask")
+                .finished().orderByHistoricActivityInstanceEndTime()
+                .asc().list();
+        if(historicActivityInstanceList == null || historicActivityInstanceList.isEmpty()){
+            return ResultFactory.buildFailResult("撤回失败：该流程上无用户任务，请核实！");
+        }
+        // 2、取消 取消产生的任务，查找此流程产生的task并取消
+        ActivityInstance activityInstance = runtimeService.getActivityInstance(task.getProcessInstanceId());
+        String toActId = historicActivityInstanceList.get(0).getActivityId();
+        String assignee = historicActivityInstanceList.get(0).getAssignee();
+        Map<String, Object> taskVariable = new HashMap<>();
+        //设置当前处理人
+        taskVariable.put("assignee", assignee);
+        runtimeService.createProcessInstanceModification(task.getProcessInstanceId())
+                //关闭相关任务
+                .cancelActivityInstance(getInstanceIdForActivity(activityInstance, task.getTaskDefinitionKey()))
+                .setAnnotation("进行了撤回到节点操作")
+                //启动目标活动节点
+                .startBeforeActivity(toActId)
+                //流程的可变参数赋值
+                .setVariables(taskVariable)
+                .execute();
+        // 3、删除此流程实例
+        runtimeService.deleteProcessInstance(task.getProcessInstanceId(), String.format("%s 用户执行了撤回操作", userId));
+        return ResultFactory.buildResult(200,"撤回成功", null);
+    }
+
+    private boolean checkProcessStarter(String procId, String userId){
+        List<HistoricProcessInstance> hpiList =  historyService.createHistoricProcessInstanceQuery()
+                .processInstanceId(procId)
+                .startedBy(userId)
+                .list();
+        return null != hpiList && hpiList.size() > 0;
+    }
+    private boolean checkProcessInstanceState(String procId){
+        ProcessInstance processInstance = runtimeService.createProcessInstanceQuery()
+                .processInstanceId(procId)
+                .singleResult();
+        if(ObjectUtils.isEmpty(processInstance)){
+            return false;//5 此流程并未在流转中
+        }
+        if(processInstance.isEnded()) {
+            return false;//6 此流程已结束
+        }
+        return true;
     }
 
     public static void main(String[] args) {
