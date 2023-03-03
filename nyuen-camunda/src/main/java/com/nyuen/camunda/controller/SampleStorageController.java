@@ -93,7 +93,7 @@ public class SampleStorageController {
     @ApiOperation(value = "启用新的冰箱层级或选择已有冰箱层级", httpMethod = "GET")
     @GetMapping("/chooseFridgeLevel")
     public Result chooseFridgeLevel(@RequestParam("flag") boolean flag,@RequestParam("fridgeNo") String fridgeNo,
-                                    @RequestParam("levelNo") int levelNo,@RequestParam("sampleType") String sampleType,
+                                    @RequestParam("levelNo") int levelNo,@RequestParam(value = "sampleType",required = false) String sampleType,
                                     HttpServletRequest request){
         //区分是已有层级(需提示层级样本类型)，还是新的层级(新层级样本类型必选)
         LabFridgeLevel lfl = new LabFridgeLevel();
