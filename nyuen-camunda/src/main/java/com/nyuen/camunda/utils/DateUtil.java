@@ -668,8 +668,8 @@ public class DateUtil {
     }
 
     /**
-     * 获取距离指定日期多少天之后的日期
-     * @param theDay 当前日期
+     * 获取距离指定日期多少天之前/之后的日期
+     * @param theDay 指定日期
      * @param days 天数
      * @return 返回日期
      */
@@ -683,6 +683,6 @@ public class DateUtil {
 
     public static void main(String[] args) throws ParseException {
         Date theDay = new Date();
-        System.out.println(DateUtil.DateToString(DateUtil.getOneDayAfterToday(theDay,26), "yyyy-MM-dd HH:mm:ss"));
+        System.out.println(DateUtil.DateToString(DateUtil.getOneDayAfterToday(theDay,-6), "yyyy-MM-dd HH:mm:ss"));
     }
 }
