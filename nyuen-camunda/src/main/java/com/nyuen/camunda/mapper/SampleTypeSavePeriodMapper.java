@@ -50,4 +50,11 @@ public interface SampleTypeSavePeriodMapper {
      * @mbg.generated Mon Feb 20 11:10:43 CST 2023
      */
     int updateByPrimaryKey(SampleTypeSavePeriod record);
+
+    /**
+     *
+     * 自定义部分
+     */
+
+    Integer getPeriodBySampleType(String sampleType);
 }

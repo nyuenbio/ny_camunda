@@ -12,10 +12,8 @@ import com.nyuen.camunda.domain.vo.SampleStoreOperateVo;
 import com.nyuen.camunda.result.Result;
 import com.nyuen.camunda.result.ResultFactory;
 import com.nyuen.camunda.domain.po.LabFridge;
-import com.nyuen.camunda.service.LabFridgeLevelService;
-import com.nyuen.camunda.service.LabFridgeService;
-import com.nyuen.camunda.service.SampleStorageOperationService;
-import com.nyuen.camunda.service.SampleStorageService;
+import com.nyuen.camunda.service.*;
+import com.nyuen.camunda.utils.DateUtil;
 import com.nyuen.camunda.utils.ObjectUtil;
 import com.nyuen.camunda.utils.PageConvert;
 import com.nyuen.camunda.utils.StringUtil;
@@ -50,6 +48,8 @@ public class SampleStorageController {
     private LabFridgeLevelService labFridgeLevelService;
     @Resource
     private SampleStorageOperationService sampleStorageOperationService;
+    @Resource
+    private SampleTypeSavePeriodService sampleTypeSavePeriodService;
 
 
     // 启用新的冰箱或选择已有冰箱
@@ -190,6 +190,11 @@ public class SampleStorageController {
         // 3、getNextLocation() && sample store
         // 干血片类型样本：A1-2-F01-01无孔位概念，perColumnCount等于fMax
         int perColumnCount =SampleTypeEnums.F.toString().equals(sampleStorageVo.getSampleType()) ? sampleStorageVo.getFMax ():(int)Math.sqrt(perBoxLocationCount);
+        // 根据样本类型获取样本保存周期（单位：天）
+        int savePeriod = sampleTypeSavePeriodService.getPeriodBySampleType(sampleStorageVo.getSampleType());
+        Date today = new Date();
+        // 计算样本过期时间
+        Date overdueTime = DateUtil.getOneDayAfterToday(today, savePeriod);
         for(String sampleNum : sampleStorageVo.getSampleNumList()){
             // todo
             String nextLocation = getNextLocation(sampleStorageVo.getSampleType(),lastSampleLocation.toString(),perColumnCount);
@@ -197,6 +202,7 @@ public class SampleStorageController {
                 return ResultFactory.buildFailResult("计算下一个库位编号出错，请联系管理员！");
             }
             SampleStorage ss1 = new SampleStorage();
+
             ss1.setSampleNum(sampleNum);
             ss1.setFridgeNo(sampleStorageVo.getFridgeNo());
             ss1.setLevelNo(sampleStorageVo.getLevelNo());
@@ -204,9 +210,10 @@ public class SampleStorageController {
             ss1.setHoleLocation(nextLocation);// todo
             ss1.setSampleType(sampleStorageVo.getSampleType());
             ss1.setSampleTypeName(SampleTypeEnums.getDescByCode(sampleStorageVo.getSampleType()));
+            ss1.setOverdueTime(overdueTime);
             ss1.setCreateUserId(loginUserId);
             ss1.setCreateUserName(loginUserName);
-            ss1.setCreateTime(new Date());
+            ss1.setCreateTime(today);
             sampleStorageService.addSampleStorage(ss1);
             //添加入库记录
             SampleStorageOperation sampleStorageOperation = new SampleStorageOperation();

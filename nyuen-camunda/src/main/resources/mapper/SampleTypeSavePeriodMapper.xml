@@ -166,4 +166,13 @@
       remark1 = #{remark1,jdbcType=VARCHAR}
     where id = #{id,jdbcType=INTEGER}
   </update>
+
+  <!--自定义部分-->
+  <select id="getPeriodBySampleType" parameterType="java.lang.String" resultType="java.lang.Integer">
+    select save_period
+    from sample_type_save_period
+    where sample_type = #{sampleType,jdbcType=VARCHAR}
+    limit 0,1
+  </select>
+
 </mapper>

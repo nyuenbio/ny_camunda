@@ -8,4 +8,6 @@ package com.nyuen.camunda.service;
  * @date 2023/2/21
  */
 public interface SampleTypeSavePeriodService {
+
+    Integer getPeriodBySampleType(String sampleType);
 }

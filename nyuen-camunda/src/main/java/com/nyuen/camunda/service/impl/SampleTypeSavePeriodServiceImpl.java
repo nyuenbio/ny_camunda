@@ -19,4 +19,8 @@ public class SampleTypeSavePeriodServiceImpl implements SampleTypeSavePeriodServ
     private SampleTypeSavePeriodMapper sampleTypeSavePeriodMapper;
 
 
+    @Override
+    public Integer getPeriodBySampleType(String sampleType) {
+        return sampleTypeSavePeriodMapper.getPeriodBySampleType(sampleType);
+    }
 }

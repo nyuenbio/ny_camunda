@@ -667,9 +667,22 @@ public class DateUtil {
         return dayBefore;
     }
 
+    /**
+     * 获取距离指定日期多少天之后的日期
+     * @param theDay 当前日期
+     * @param days 天数
+     * @return 返回日期
+     */
+    public static Date getOneDayAfterToday(Date theDay, int days){
+        Calendar c = Calendar.getInstance();
+        c.setTime(theDay);
+        int day = c.get(Calendar.DATE);
+        c.set(Calendar.DATE, day+days);
+        return c.getTime();
+    }
+
     public static void main(String[] args) throws ParseException {
-        System.out.println(DateUtil.DateToString(new Date(), "yyMMdd"));
-        System.out.println(DateUtil.getBeforeDay("2019-11-19"));
-        System.out.println(DateUtil.StringToDate("191120", "yyMMddd"));
+        Date theDay = new Date();
+        System.out.println(DateUtil.DateToString(DateUtil.getOneDayAfterToday(theDay,26), "yyyy-MM-dd HH:mm:ss"));
     }
 }
