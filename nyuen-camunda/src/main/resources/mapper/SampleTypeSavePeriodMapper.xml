@@ -175,4 +175,9 @@
     limit 0,1
   </select>
 
+  <select id="getSavePeriodList" resultMap="BaseResultMap">
+    select <include refid="Base_Column_List"></include>
+    from sample_type_save_period
+  </select>
+
 </mapper>
