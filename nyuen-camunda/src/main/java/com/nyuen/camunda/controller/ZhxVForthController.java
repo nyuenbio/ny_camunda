@@ -222,6 +222,42 @@ public class ZhxVForthController {
         return ResultFactory.buildSuccessResult(null);
     }
 
+    @ApiOperation(value = "根据样本编号获取孔位信息",httpMethod = "POST")
+    @PostMapping("/getHoleBySample")
+    public Result getHoleBySample(@RequestBody List<SampleReceiveBean> sampleReceiveBeanList){
+        List<Map<String, Object>> resultList = new ArrayList<>();
+        for(SampleReceiveBean srBean : sampleReceiveBeanList) {
+            // 如果是臻慧选产品或贝安臻抗癫痫用药，处理套餐与孔位规则
+            if (236 == srBean.getProductType() || 243 == srBean.getProductType()) {
+                Map<String, Object> variables = new HashMap<>();
+                List<SampleSiteRule> sampleSiteRuleList = sampleSiteRuleService.getHoleAndAssayByProductName(Arrays.asList(srBean.getProductName().split(",")));
+                if (sampleSiteRuleList != null && sampleSiteRuleList.size() > 0) {
+                    LinkedHashSet<String> holeCodesSet = new LinkedHashSet<>();
+                    LinkedHashSet<String> assayCodesSet = new LinkedHashSet<>();
+                    AtomicInteger cnvState = new AtomicInteger();
+                    List<SampleSiteRule> tempList = sampleSiteRuleList.stream().map(m -> {
+                        List<String> hole = Arrays.asList(m.getHoleCode().split(","));
+                        holeCodesSet.addAll(hole);
+                        List<String> assay = Arrays.asList(m.getAssayCode().split(","));
+                        assayCodesSet.addAll(assay);
+                        cnvState.set(cnvState.intValue() | m.getState());
+                        return m;
+                    }).collect(Collectors.toList());//[A,B,C]
+                    String holeCodes = holeCodesSet.toString().substring(1, holeCodesSet.toString().length() - 1);
+                    String assayCodes = assayCodesSet.toString().substring(1, assayCodesSet.toString().length() - 1);
+
+                    variables.put("sampleInfo",srBean.getSampleInfo());
+                    variables.put("productName", srBean.getProductName());
+                    variables.put("holeCodes", holeCodes);
+                    variables.put("assayCodes", assayCodes);
+                    variables.put("cnvState",cnvState.intValue() == 0 ? 0:1);//0：不做CNV
+                    resultList.add(variables);
+                }
+            }
+        }
+        return ResultFactory.buildSuccessResult(resultList);
+    }
+
     public static void main(String[] args) {
         SampleReceiveBean srBean = new SampleReceiveBean();
         srBean.setProductType(236);
