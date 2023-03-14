@@ -167,9 +167,7 @@ public class SampleStorageController {
         ss.setLevelNo(sampleStorageVo.getLevelNo());
         SampleStorage sampleStorage = sampleStorageService.getLastSampleLocation(ss);
         StringBuilder lastSampleLocation = null;
-//        if(null == sampleStorage){ //新的冰箱和层级 todo
-//
-//        }
+
         if(null != sampleStorage && StringUtil.isEmpty(sampleStorage.getSampleLocation())){
             return ResultFactory.buildFailResult("查找最新样本存储位置出错，请联系管理员！");
         }

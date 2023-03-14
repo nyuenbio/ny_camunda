@@ -68,4 +68,6 @@ public interface SampleStorageMapper {
     List<SampleStorage> getSampleStorageList(Map<String,Object> params);
 
     int getSampleStorageTotal(Map<String,Object> params);
+
+    List<SampleStorage> getLevelUsedBox(SampleStorage sampleStorage);
 }

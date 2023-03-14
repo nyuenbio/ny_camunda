@@ -59,5 +59,7 @@ public interface LabFridgeLevelMapper {
      */
     List<LabFridgeLevel> getSampleTypeByFridgeNoAndLevel(LabFridgeLevel labFridgeLevel);
 
+    List<LabFridgeLevel> getFridgeUsedLevel(String fridgeNo);
+
 
 }

@@ -16,4 +16,6 @@ public interface LabFridgeLevelService {
     List<LabFridgeLevel> getSampleTypeByFridgeNoAndLevel(LabFridgeLevel labFridgeLevel);
 
     void addLabFridgeLevel(LabFridgeLevel lfl);
+
+    List<LabFridgeLevel> getFridgeUsedLevel(String fridgeNo);
 }

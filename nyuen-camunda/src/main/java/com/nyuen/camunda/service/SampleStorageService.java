@@ -4,6 +4,7 @@ import com.nyuen.camunda.common.PageBean;
 import com.nyuen.camunda.domain.po.SampleStorage;
 import com.nyuen.camunda.domain.vo.SampleStoreOperateVo;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -22,5 +23,7 @@ public interface SampleStorageService {
     void sampleStoreOperate(SampleStoreOperateVo sampleStoreOperateVo);
 
     PageBean getSampleStorageList(Map<String,Object> params);
+
+    List<SampleStorage> getLevelUsedBox(SampleStorage sampleStorage);
 
 }

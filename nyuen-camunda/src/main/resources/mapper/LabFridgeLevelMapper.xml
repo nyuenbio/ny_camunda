@@ -173,6 +173,13 @@
     where fridge_no=#{fridgeNo,jdbcType=VARCHAR}
         and level_no=#{levelNo,jdbcType=INTEGER}
   </select>
+  <!--查询一个冰箱目前存放哪几个层级-->
+  <select id="getFridgeUsedLevel" parameterType="java.lang.String" resultMap="BaseResultMap">
+    SELECT DISTINCT level_no,sample_type
+    from lab_fridge_level
+    where fridge_no=#{fridgeNo,jdbcType=VARCHAR}
+    order by level_no asc
+  </select>
 
 
 </mapper>

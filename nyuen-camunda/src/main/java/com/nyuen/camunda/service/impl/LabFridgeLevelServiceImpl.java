@@ -30,4 +30,9 @@ public class LabFridgeLevelServiceImpl implements LabFridgeLevelService {
     public void addLabFridgeLevel(LabFridgeLevel lfl) {
         labFridgeLevelMapper.insertSelective(lfl);
     }
+
+    @Override
+    public List<LabFridgeLevel> getFridgeUsedLevel(String fridgeNo) {
+        return labFridgeLevelMapper.getFridgeUsedLevel(fridgeNo);
+    }
 }

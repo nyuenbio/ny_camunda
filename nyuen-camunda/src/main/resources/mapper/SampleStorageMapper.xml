@@ -323,7 +323,17 @@
       <if test="sampleStorageState != 0">
         and sample_storage_state = #{sampleStorageState,jdbcType=INTEGER}
       </if>
+      <if test="fridgeNo != null and fridgeNo !=''">
+        and fridge_no=#{fridgeNo,jdbcType=VARCHAR}
+      </if>
+      <if test="levelNo != null and levelNo !=0">
+        and level_no=#{levelNo,jdbcType=INTEGER}
+      </if>
+      <if test="boxNo != null and boxNo !=''">
+        and box_no=#{boxNo,jdbcType=VARCHAR}
+      </if>
     </where>
+    order by id desc
     limit #{startIndex},#{pageSize}
   </select>
   <select id="getSampleStorageTotal" parameterType="java.util.HashMap" resultType="java.lang.Integer">
@@ -339,7 +349,24 @@
       <if test="sampleStorageState != 0">
         and sample_storage_state = #{sampleStorageState,jdbcType=INTEGER}
       </if>
+      <if test="fridgeNo != null and fridgeNo !=''">
+        and fridge_no=#{fridgeNo,jdbcType=VARCHAR}
+      </if>
+      <if test="levelNo != null and levelNo !=0">
+        and level_no=#{levelNo,jdbcType=INTEGER}
+      </if>
+      <if test="boxNo != null and boxNo !=''">
+        and box_no=#{boxNo,jdbcType=VARCHAR}
+      </if>
     </where>
+  </select>
+
+  <!--查询冰箱层级目前存放哪几个盒子-->
+  <select id="getLevelUsedBox" parameterType="com.nyuen.camunda.domain.po.SampleStorage" resultMap="BaseResultMap">
+    SELECT DISTINCT box_no, level_no
+    from sample_storage
+    where fridge_no=#{fridgeNo,jdbcType=VARCHAR}
+    and level_no=#{levelNo,jdbcType=INTEGER}
   </select>
 
 </mapper>

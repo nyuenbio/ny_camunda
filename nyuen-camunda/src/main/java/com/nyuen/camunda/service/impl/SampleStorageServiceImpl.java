@@ -44,4 +44,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         int total = sampleStorageMapper.getSampleStorageTotal(params);
         return new PageBean(total,sampleStorageList);
     }
+
+    @Override
+    public List<SampleStorage> getLevelUsedBox(SampleStorage sampleStorage) {
+        return sampleStorageMapper.getLevelUsedBox(sampleStorage);
+    }
 }
