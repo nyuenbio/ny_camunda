@@ -19,4 +19,9 @@ public class SampleStorageBean {
     private List<String> sampleNumList;
     private int sampleStorageState;
 
+    //查询某个盒子中的样本
+    private String fridgeNo;
+    private Integer levelNo;
+    private String boxNo;
+
 }
