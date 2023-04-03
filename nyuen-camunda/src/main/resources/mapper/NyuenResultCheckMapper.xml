@@ -226,6 +226,9 @@
       <if test="snp != null and snp != ''">
         and snp = #{snp,jdbcType=VARCHAR}
       </if>
+      <if test="assayId != null and assayId != ''">
+        and assay_id = #{assayId,jdbcType=VARCHAR}
+      </if>
       <if test="sampleInfo != null and sampleInfo != ''">
         and sample_info = #{sampleInfo,jdbcType=VARCHAR}
       </if>
@@ -244,6 +247,9 @@
     <where>
       <if test="snp != null and snp != ''">
         and snp = #{snp,jdbcType=VARCHAR}
+      </if>
+      <if test="assayId != null and assayId != ''">
+        and assay_id = #{assayId,jdbcType=VARCHAR}
       </if>
       <if test="sampleInfo != null and sampleInfo != ''">
         and sample_info = #{sampleInfo,jdbcType=VARCHAR}

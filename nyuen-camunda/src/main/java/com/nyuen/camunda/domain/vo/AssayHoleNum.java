@@ -2,7 +2,7 @@ package com.nyuen.camunda.domain.vo;
 
 public enum AssayHoleNum {
     A(29),
-    B(20),
+    B(22),
     C(29),
     D(27),
     E(30),
