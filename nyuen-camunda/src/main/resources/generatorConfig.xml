@@ -140,9 +140,7 @@
                enableSelectByExample="false" enableUpdateByExample="false" selectByExampleQueryId="false">
         </table>
 
-        <table tableName="sample_lab_info" domainObjectName="SampleLabInfo" enableCountByExample="false" enableDeleteByExample="false"
-               enableSelectByExample="false" enableUpdateByExample="false" selectByExampleQueryId="false">
-        </table>
+
 
         <table tableName="reference" domainObjectName="Reference" enableCountByExample="false" enableDeleteByExample="false"
                enableSelectByExample="false" enableUpdateByExample="false" selectByExampleQueryId="false">
@@ -167,8 +165,12 @@
         <table tableName="lab_fridge_level" domainObjectName="LabFridgeLevel" enableCountByExample="false" enableDeleteByExample="false"
                enableSelectByExample="false" enableUpdateByExample="false" selectByExampleQueryId="false">
         </table>
-        -->
+
         <table tableName="sample_storage" domainObjectName="SampleStorage" enableCountByExample="false" enableDeleteByExample="false"
+               enableSelectByExample="false" enableUpdateByExample="false" selectByExampleQueryId="false">
+        </table>
+        -->
+        <table tableName="sample_lab_info" domainObjectName="SampleLabInfo" enableCountByExample="false" enableDeleteByExample="false"
                enableSelectByExample="false" enableUpdateByExample="false" selectByExampleQueryId="false">
         </table>
     </context>

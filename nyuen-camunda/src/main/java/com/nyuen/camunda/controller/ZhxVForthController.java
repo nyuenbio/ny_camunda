@@ -108,6 +108,9 @@ public class ZhxVForthController {
                     sampleLabInfo.setProcInstId(pi.getId());
                     sampleLabInfo.setProductType(srBean.getProductType());
                     sampleLabInfo.setProductName(srBean.getProductName());
+                    sampleLabInfo.setSampleType(srBean.getSampleType());
+                    sampleLabInfo.setHospitalId(srBean.getHospitalId());
+                    sampleLabInfo.setHospitalName(srBean.getHospitalName());
                     sampleLabInfo.setHoleNum(holeCodesSet.size());
                     sampleLabInfo.setHoleCode(holeCodes);
                     sampleLabInfo.setAssayCode(assayCodes);
@@ -129,7 +132,7 @@ public class ZhxVForthController {
     public void exportSampleSiteInfo(@RequestBody List<String> procInstIdList, HttpServletResponse response) throws Exception {
         List<SampleLabInfo> sampleLabInfoList = sampleLabInfoService.getSampleLabInfoList(procInstIdList);
         // 构建导出excel表头（第一行）
-        String[] excelHeader = {"样本编号", "产品名称", "孔位", "孔位编号", "ASSAY编号","创建时间","备注"};
+        String[] excelHeader = {"样本编号", "产品名称", "孔位", "孔位编号", "ASSAY编号","创建时间","备注", "样本类型", "医院名称"};
         ExcelUtil.exportExcel(response,excelHeader,sampleLabInfoList,"样本位点信息","样本位点信息");
 
     }
