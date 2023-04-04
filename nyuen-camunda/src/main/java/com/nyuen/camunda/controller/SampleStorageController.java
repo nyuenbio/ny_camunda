@@ -49,7 +49,6 @@ public class SampleStorageController {
     @Resource
     private SampleTypeSavePeriodService sampleTypeSavePeriodService;
 
-
     // 启用新的冰箱或选择已有冰箱
     @ApiOperation(value = "启用新的冰箱或选择已有冰箱", httpMethod = "GET")
     @GetMapping("/chooseFridge")
@@ -402,7 +401,7 @@ public class SampleStorageController {
         PageConvert.currentPageConvertStartIndex(map);
         List<SampleStorage> sampleStorageList = sampleStorageService.getSampleStorageListWithoutPage(map);
         // 构建导出excel表头（第一行）
-        String[] excelHeader = {"样本编号", "样本位置", "样本类型", "样本状态", "创建人", "创建时间"};
+        String[] excelHeader = {"样本编号", "样本位置", "样本类型", "样本状态", "创建人", "创建时间", "是否过期"};
         ExcelUtil.exportSampleStorageExcel(response,excelHeader,sampleStorageList,"样本库位信息"+DateUtil.DateToString(new Date(),"yyyyMMdd"),"样本库位信息");
     }
 
@@ -444,6 +443,7 @@ public class SampleStorageController {
 
         System.out.println(getNextLocation("A1", 3,"F",new StringBuilder("A1-2-F09-06"),50));
         System.out.println(getNextLocation("A1", 3,"F",null,50));
+
     }
 
 

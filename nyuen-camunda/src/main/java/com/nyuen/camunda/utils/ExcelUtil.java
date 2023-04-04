@@ -207,7 +207,7 @@ public class ExcelUtil {
             cell.setCellValue(header[i]);
             cell.setCellStyle(HeaderStyle(wb));
         }
-        //{"样本编号", "样本位置", "样本类型", "样本状态", "创建人", "创建时间"}
+        //{"样本编号", "样本位置", "样本类型", "样本状态", "创建人", "创建时间","是否过期"}
         for (int i = 0; i < content.size(); i++) {
             row = sheet.createRow((int) i + 1);
             row.setHeight((short) 500);
@@ -230,6 +230,9 @@ public class ExcelUtil {
             org.apache.poi.ss.usermodel.Cell cell5 = row.createCell(5);
             cell5.setCellValue(DateUtil.DateToString(content.get(i).getCreateTime(),"yyyy-MM-dd HH:mm:ss"));
             cell5.setCellStyle(contentStyle(wb));
+            org.apache.poi.ss.usermodel.Cell cell6 = row.createCell(6);
+            cell6.setCellValue(content.get(i).getOverdueTime().compareTo(new Date())>0?"未过期":"已过期");
+            cell6.setCellStyle(contentStyle(wb));
         }
         fileName = new String(fileName.getBytes(StandardCharsets.UTF_8), "ISO8859-1");
         response.reset();
