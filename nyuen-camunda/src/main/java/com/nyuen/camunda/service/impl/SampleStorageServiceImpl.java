@@ -49,4 +49,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     public List<SampleStorage> getLevelUsedBox(SampleStorage sampleStorage) {
         return sampleStorageMapper.getLevelUsedBox(sampleStorage);
     }
+
+    @Override
+    public List<SampleStorage> getSampleStorageListWithoutPage(Map<String, Object> params) {
+        return sampleStorageMapper.getSampleStorageListWithoutPage(params);
+    }
 }

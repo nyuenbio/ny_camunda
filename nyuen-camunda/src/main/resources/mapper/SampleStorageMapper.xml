@@ -373,6 +373,39 @@
     </where>
   </select>
 
+  <!--导出样本库信息-->
+  <select id="getSampleStorageListWithoutPage" parameterType="java.util.HashMap" resultMap="BaseResultMap">
+    select <include refid="Base_Column_List"></include>
+    from sample_storage
+    <where>
+      <if test="sampleNumList != null ">
+        and sample_num in
+        <foreach collection="sampleNumList" index="index" item="item" open="(" separator="," close=")">
+          #{item}
+        </foreach>
+      </if>
+      <if test="sampleStorageState != 0">
+        and sample_storage_state = #{sampleStorageState,jdbcType=INTEGER}
+      </if>
+      <if test="fridgeNo != null and fridgeNo !=''">
+        and fridge_no=#{fridgeNo,jdbcType=VARCHAR}
+      </if>
+      <if test="levelNo != null and levelNo !=0">
+        and level_no=#{levelNo,jdbcType=INTEGER}
+      </if>
+      <if test="boxNo != null and boxNo !=''">
+        and box_no=#{boxNo,jdbcType=VARCHAR}
+      </if>
+      <if test="createTimeStart != null">
+        and DATE_FORMAT(create_time, '%Y-%m-%d %H:%i:%S') &gt;= DATE_FORMAT(#{createTimeStart}, '%Y-%m-%d %H:%i:%S')
+      </if>
+      <if test="createTimeEnd != null">
+        and DATE_FORMAT(create_time, '%Y-%m-%d %H:%i:%S') &lt;= DATE_FORMAT(#{createTimeEnd}, '%Y-%m-%d %H:%i:%S')
+      </if>
+    </where>
+    order by id desc
+  </select>
+
   <!--查询冰箱层级目前存放哪几个盒子-->
   <select id="getLevelUsedBox" parameterType="com.nyuen.camunda.domain.po.SampleStorage" resultMap="BaseResultMap">
     SELECT DISTINCT box_no, level_no

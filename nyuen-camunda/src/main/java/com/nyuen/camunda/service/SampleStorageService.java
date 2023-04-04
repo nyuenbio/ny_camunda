@@ -26,4 +26,6 @@ public interface SampleStorageService {
 
     List<SampleStorage> getLevelUsedBox(SampleStorage sampleStorage);
 
+    List<SampleStorage> getSampleStorageListWithoutPage(Map<String,Object> params);
+
 }

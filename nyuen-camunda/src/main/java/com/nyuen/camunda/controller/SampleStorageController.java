@@ -13,10 +13,7 @@ import com.nyuen.camunda.result.Result;
 import com.nyuen.camunda.result.ResultFactory;
 import com.nyuen.camunda.domain.po.LabFridge;
 import com.nyuen.camunda.service.*;
-import com.nyuen.camunda.utils.DateUtil;
-import com.nyuen.camunda.utils.ObjectUtil;
-import com.nyuen.camunda.utils.PageConvert;
-import com.nyuen.camunda.utils.StringUtil;
+import com.nyuen.camunda.utils.*;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.web.bind.annotation.*;
@@ -24,6 +21,7 @@ import springfox.documentation.annotations.ApiIgnore;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.net.URLDecoder;
 import java.util.Date;
 import java.util.List;
@@ -397,6 +395,16 @@ public class SampleStorageController {
         return ResultFactory.buildSuccessResult(sampleStorageOperationService.getSampleStorageOperation(sampleNum));
     }
 
+    @ApiOperation(value = "导出样本库信息Excel", httpMethod = "POST")
+    @PostMapping("/exportSampleStorageList")
+    public void exportSampleStorageList(@RequestBody SampleStorageBean sampleStorageBean, HttpServletResponse response) throws Exception {
+        Map<String,Object> map = ObjectUtil.objectToMap(sampleStorageBean);
+        PageConvert.currentPageConvertStartIndex(map);
+        List<SampleStorage> sampleStorageList = sampleStorageService.getSampleStorageListWithoutPage(map);
+        // 构建导出excel表头（第一行）
+        String[] excelHeader = {"样本编号", "样本位置", "样本类型", "样本状态", "创建人", "创建时间"};
+        ExcelUtil.exportSampleStorageExcel(response,excelHeader,sampleStorageList,"样本库位信息"+DateUtil.DateToString(new Date(),"yyyyMMdd"),"样本库位信息");
+    }
 
     private static int getLetterIndex(String letter){
         String[] letterArray = {"A","B","C","D","E","F","G","H","J"};

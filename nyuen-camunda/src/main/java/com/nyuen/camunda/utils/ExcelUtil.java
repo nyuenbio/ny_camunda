@@ -1,7 +1,9 @@
 package com.nyuen.camunda.utils;
 
 import com.alibaba.fastjson.JSONArray;
+import com.nyuen.camunda.common.SampleStorageStateEnums;
 import com.nyuen.camunda.domain.po.SampleLabInfo;
+import com.nyuen.camunda.domain.po.SampleStorage;
 import com.nyuen.camunda.domain.vo.SampleRow;
 import com.nyuen.camunda.domain.vo.SampleRowAndCell;
 import com.nyuen.camunda.result.Result;
@@ -179,6 +181,56 @@ public class ExcelUtil {
 //        } else if (request.getHeader("User-Agent").toUpperCase().indexOf("CHROME") > 0) {
 //            title = new String(title.getBytes("UTF-8"), "ISO8859-1");// 谷歌
 //        }
+        fileName = new String(fileName.getBytes(StandardCharsets.UTF_8), "ISO8859-1");
+        response.reset();
+        response.setContentType("application/octet-stream; charset=utf-8");
+        //response.setHeader("Access-Control-Allow-Origin", "*");
+        response.setHeader("Content-Disposition", "attachment; filename=" + fileName);
+        wb.write(response.getOutputStream());
+        response.getOutputStream().close();
+    }
+
+    public static void exportSampleStorageExcel(HttpServletResponse response, String[] header, List<SampleStorage> content,
+                                   String fileName, String sheetName) throws Exception{
+        fileName = fileName + ".xlsx";
+        Workbook wb = new SXSSFWorkbook(1000);
+        Sheet sheet = wb.createSheet(sheetName);
+        Row row = sheet.createRow( 0);
+        // 行高
+        row.setHeight((short) 700);
+        // 列宽
+        for (int i = 0; i < header.length; i++) {
+            sheet.setColumnWidth(i, 20 * 256);
+        }
+        for (int i = 0; i < header.length; i++) {
+            org.apache.poi.ss.usermodel.Cell cell = row.createCell(i);
+            cell.setCellValue(header[i]);
+            cell.setCellStyle(HeaderStyle(wb));
+        }
+        //{"样本编号", "样本位置", "样本类型", "样本状态", "创建人", "创建时间"}
+        for (int i = 0; i < content.size(); i++) {
+            row = sheet.createRow((int) i + 1);
+            row.setHeight((short) 500);
+            org.apache.poi.ss.usermodel.Cell cell0 = row.createCell(0);
+            cell0.setCellValue(content.get(i).getSampleNum());
+            cell0.setCellStyle(contentStyle(wb));
+            org.apache.poi.ss.usermodel.Cell cell1 = row.createCell(1);
+            cell1.setCellValue(content.get(i).getSampleLocation());
+            cell1.setCellStyle(contentStyle(wb));
+            org.apache.poi.ss.usermodel.Cell cell2 = row.createCell(2);
+            cell2.setCellValue(content.get(i).getSampleTypeName());
+            cell2.setCellStyle(contentStyle(wb));
+            org.apache.poi.ss.usermodel.Cell cell3 = row.createCell(3);
+            Integer sampleStorageState = content.get(i).getSampleStorageState();
+            cell3.setCellValue(SampleStorageStateEnums.getNameByCode(sampleStorageState));
+            cell3.setCellStyle(contentStyle(wb));
+            org.apache.poi.ss.usermodel.Cell cell4 = row.createCell(4);
+            cell4.setCellValue(content.get(i).getCreateUserName());
+            cell4.setCellStyle(contentStyle(wb));
+            org.apache.poi.ss.usermodel.Cell cell5 = row.createCell(5);
+            cell5.setCellValue(DateUtil.DateToString(content.get(i).getCreateTime(),"yyyy-MM-dd HH:mm:ss"));
+            cell5.setCellStyle(contentStyle(wb));
+        }
         fileName = new String(fileName.getBytes(StandardCharsets.UTF_8), "ISO8859-1");
         response.reset();
         response.setContentType("application/octet-stream; charset=utf-8");
