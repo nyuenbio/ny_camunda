@@ -332,6 +332,12 @@
       <if test="boxNo != null and boxNo !=''">
         and box_no=#{boxNo,jdbcType=VARCHAR}
       </if>
+      <if test="createTimeStart != null">
+        and DATE_FORMAT(create_time, '%Y-%m-%d %H:%i:%S') &gt;= DATE_FORMAT(#{createTimeStart}, '%Y-%m-%d %H:%i:%S')
+      </if>
+      <if test="createTimeEnd != null">
+        and DATE_FORMAT(create_time, '%Y-%m-%d %H:%i:%S') &lt;= DATE_FORMAT(#{createTimeEnd}, '%Y-%m-%d %H:%i:%S')
+      </if>
     </where>
     order by id desc
     limit #{startIndex},#{pageSize}
@@ -357,6 +363,12 @@
       </if>
       <if test="boxNo != null and boxNo !=''">
         and box_no=#{boxNo,jdbcType=VARCHAR}
+      </if>
+      <if test="createTimeStart != null">
+        and DATE_FORMAT(create_time, '%Y-%m-%d %H:%i:%S') &gt;= DATE_FORMAT(#{createTimeStart}, '%Y-%m-%d %H:%i:%S')
+      </if>
+      <if test="createTimeEnd != null">
+        and DATE_FORMAT(create_time, '%Y-%m-%d %H:%i:%S') &lt;= DATE_FORMAT(#{createTimeEnd}, '%Y-%m-%d %H:%i:%S')
       </if>
     </where>
   </select>

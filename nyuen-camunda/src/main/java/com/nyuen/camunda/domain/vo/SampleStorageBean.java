@@ -1,12 +1,12 @@
 package com.nyuen.camunda.domain.vo;
 
-import com.nyuen.camunda.common.BaseBean;
 import lombok.Data;
 
+import java.util.Date;
 import java.util.List;
 
 /**
- * TODO
+ * 样本库信息查询bean
  *
  * @author chengjl
  * @description
@@ -16,12 +16,15 @@ import java.util.List;
 public class SampleStorageBean {
     private Integer currentPage;
     private Integer pageSize;
+
     private List<String> sampleNumList;
     private int sampleStorageState;
 
     //查询某个盒子中的样本
-    private String fridgeNo;
-    private Integer levelNo;
-    private String boxNo;
+    private String fridgeNo;//冰箱编号
+    private Integer levelNo;//冰箱层级
+    private String boxNo;//盒子编号
 
+    private Date createTimeStart;//入库时间起
+    private Date createTimeEnd;//入库时间止
 }
