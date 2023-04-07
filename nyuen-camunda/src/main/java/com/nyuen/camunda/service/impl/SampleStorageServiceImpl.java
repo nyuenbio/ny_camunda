@@ -54,4 +54,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     public List<SampleStorage> getSampleStorageListWithoutPage(Map<String, Object> params) {
         return sampleStorageMapper.getSampleStorageListWithoutPage(params);
     }
+
+    @Override
+    public List<SampleStorage> getInfoByLocation(String sampleLocation) {
+        return sampleStorageMapper.getInfoByLocation(sampleLocation);
+    }
 }

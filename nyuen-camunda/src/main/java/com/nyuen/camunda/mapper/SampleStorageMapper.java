@@ -72,4 +72,7 @@ public interface SampleStorageMapper {
     List<SampleStorage> getLevelUsedBox(SampleStorage sampleStorage);
 
     List<SampleStorage> getSampleStorageListWithoutPage(Map<String,Object> params);
+
+    List<SampleStorage> getInfoByLocation(String sampleLocation);
+
 }

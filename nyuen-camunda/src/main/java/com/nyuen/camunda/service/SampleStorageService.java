@@ -28,4 +28,6 @@ public interface SampleStorageService {
 
     List<SampleStorage> getSampleStorageListWithoutPage(Map<String,Object> params);
 
+    List<SampleStorage> getInfoByLocation(String sampleLocation);
+
 }

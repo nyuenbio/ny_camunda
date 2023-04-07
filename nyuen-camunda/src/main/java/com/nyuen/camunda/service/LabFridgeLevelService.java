@@ -13,7 +13,7 @@ import java.util.List;
  */
 public interface LabFridgeLevelService {
 
-    List<LabFridgeLevel> getSampleTypeByFridgeNoAndLevel(LabFridgeLevel labFridgeLevel);
+    List<LabFridgeLevel> getInfoByFridgeNoAndLevel(LabFridgeLevel labFridgeLevel);
 
     void addLabFridgeLevel(LabFridgeLevel lfl);
 

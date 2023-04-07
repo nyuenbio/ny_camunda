@@ -22,8 +22,8 @@ public class LabFridgeLevelServiceImpl implements LabFridgeLevelService {
 
 
     @Override
-    public List<LabFridgeLevel> getSampleTypeByFridgeNoAndLevel(LabFridgeLevel labFridgeLevel) {
-        return labFridgeLevelMapper.getSampleTypeByFridgeNoAndLevel(labFridgeLevel);
+    public List<LabFridgeLevel> getInfoByFridgeNoAndLevel(LabFridgeLevel labFridgeLevel) {
+        return labFridgeLevelMapper.getInfoByFridgeNoAndLevel(labFridgeLevel);
     }
 
     @Override

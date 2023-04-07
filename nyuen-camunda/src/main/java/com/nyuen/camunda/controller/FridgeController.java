@@ -14,7 +14,11 @@ import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
 
 import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+import java.net.URLDecoder;
 import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
 
 /**
  * TODO
@@ -38,6 +42,33 @@ public class FridgeController {
     @GetMapping("/getAllFridges")
     public Result getAllFridges(){
         return ResultFactory.buildSuccessResult(labFridgeService.getAllLabFridgeList());
+    }
+
+    @ApiOperation(value = "创建新的冰箱", httpMethod = "POST")
+    @PostMapping("/createFridge")
+    public Result createFridge(@RequestBody LabFridge labFridge, HttpServletRequest request){
+        //校验冰箱编码是否已存在
+        if(StringUtil.isEmpty(labFridge.getFridgeNo())){
+            return ResultFactory.buildFailResult("冰箱编码不能为空");
+        }
+        List<LabFridge> labFridges = labFridgeService.getLabFridgeByNo(labFridge.getFridgeNo());
+        if(null != labFridges && labFridges.size() != 0){
+            return ResultFactory.buildFailResult("冰箱编码不能重复");
+        }
+        String loginUserIdStr = request.getHeader("loginUserId");
+        String loginUserName = null==request.getHeader("loginUserName")?null: URLDecoder.decode(request.getHeader("loginUserName"));
+        Long loginUserId;
+        try {
+            loginUserId = Long.parseLong(loginUserIdStr);
+        } catch (Exception e) {
+            return ResultFactory.buildFailResult(e.getMessage());
+        }
+        labFridge.setFridgeState(1);//启用状态
+        labFridge.setCreateUserId(loginUserId);
+        labFridge.setCreateUserName(loginUserName);
+        labFridge.setCreateTime(new Date());
+        labFridgeService.addLabFridge(labFridge);
+        return ResultFactory.buildSuccessResult(null);
     }
 
     @ApiIgnore

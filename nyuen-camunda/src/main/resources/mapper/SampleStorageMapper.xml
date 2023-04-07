@@ -414,4 +414,11 @@
     and level_no=#{levelNo,jdbcType=INTEGER}
   </select>
 
+    <select id="getInfoByLocation" parameterType="java.lang.String" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List"></include>
+        from sample_storage
+        where sample_location = #{sampleLocation,jdbcType=VARCHAR}
+        and location_state = 1
+    </select>
+
 </mapper>
