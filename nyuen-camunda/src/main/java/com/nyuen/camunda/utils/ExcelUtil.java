@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSONArray;
 import com.nyuen.camunda.common.SampleStorageStateEnums;
 import com.nyuen.camunda.domain.po.SampleLabInfo;
 import com.nyuen.camunda.domain.po.SampleStorage;
+import com.nyuen.camunda.domain.vo.ImportSampleStorageVo;
 import com.nyuen.camunda.domain.vo.SampleRow;
 import com.nyuen.camunda.domain.vo.SampleRowAndCell;
 import com.nyuen.camunda.result.Result;
@@ -28,7 +29,7 @@ import java.util.*;
  * @date 2022/11/4
  */
 public class ExcelUtil {
-
+    //导入下机数据
     public static Result dealDataByExcel(MultipartFile multipartFile) throws IOException, InvalidFormatException {
         // 判断文件类型是否是Excel
         String excelName = multipartFile.getOriginalFilename();
@@ -74,13 +75,82 @@ public class ExcelUtil {
                 }
             }
             if(row == null || row.getCell(0) == null){
-                return ResultFactory.buildFailResult("第"+(rIndex+1)+"行第一列样本编号不能为空！");
+                return ResultFactory.buildFailResult("第"+(rIndex+1)+"行第一列样本编号不能为空！(请检查是否有空白数据)");
             }
             row.getCell(0).setCellType(CellType.STRING);
             SampleRow sampleRow = new SampleRow(row.getCell(0).getStringCellValue().trim(), rowCellList);
             dataList.add(sampleRow);
         }
         return ResultFactory.buildSuccessResult(mergeDataBySampleInfo(dataList));
+    }
+
+    //导入样本库信息
+    public static Result dealSampleStorageDataByExcel(MultipartFile multipartFile) throws IOException, InvalidFormatException {
+        // 判断文件类型是否是Excel
+        String excelName = multipartFile.getOriginalFilename();
+        if(null == excelName){
+            return ResultFactory.buildFailResult("文件名称不能为空！");
+        }
+        String suffix = excelName.substring(excelName.indexOf(".")+1);
+        if(!"xls".equals(suffix) && !"xlsx".equals(suffix)) {
+            return ResultFactory.buildFailResult("文件类型错误，仅限excel文件");
+        }
+        Workbook wb;
+        //根据文件后缀（xls/xlsx）进行判断
+        File file = multipartFileToFile(multipartFile);
+        if ( "xls".equals(suffix)){
+            FileInputStream fis =  new FileInputStream(file);  //文件流对象
+            wb = new HSSFWorkbook(fis);
+        }else {
+            wb = new XSSFWorkbook(file);
+        }
+        //开始解析
+        Sheet sheet = wb.getSheetAt(0);     //读取sheet 0
+
+        int firstRowIndex = sheet.getFirstRowNum()+1;   //第一行是列名，所以不读
+        int lastRowIndex = sheet.getLastRowNum();
+        //System.out.println("firstRowIndex: "+firstRowIndex);
+        //System.out.println("lastRowIndex: "+lastRowIndex);
+        List<ImportSampleStorageVo> dataList = new ArrayList<>();
+        for(int rIndex = firstRowIndex; rIndex <= lastRowIndex; rIndex++) {   //遍历行
+            //System.out.println("rIndex: " + rIndex);
+            //List<String> rowCellList = new ArrayList<>();
+            ImportSampleStorageVo issVo = new ImportSampleStorageVo();
+            Row row = sheet.getRow(rIndex);
+            if (row != null) {
+                // 导入样本库位信息 TODO
+                //遍历列
+                Cell cell0 = row.getCell(0);
+                if (cell0 != null) {
+                    //System.out.println("第一列是样本编号 ==> "+cell0.toString());
+                    cell0.setCellType(CellType.STRING);
+                    issVo.setSampleNum(cell0.toString().trim());
+                }else{
+                    return ResultFactory.buildFailResult("第"+(rIndex+1)+"行第一列样本编号不能为空！");
+                }
+                Cell cell1 = row.getCell(1);
+                if (cell1 != null) {
+                    //System.out.println("第二列是库位编号 ==> "+cell1.toString());
+                    cell1.setCellType(CellType.STRING);
+                    issVo.setSampleLocation(cell1.toString().trim());
+                }else{
+                    return ResultFactory.buildFailResult("第"+(rIndex+1)+"行第二列库位编号不能为空！");
+                }
+                Cell cell2 = row.getCell(2);
+                if (cell2 != null) {
+                    //System.out.println("第三列是样本类型 ==> "+cell2.toString());
+                    cell2.setCellType(CellType.STRING);
+                    issVo.setSampleTypeName(cell2.toString().trim());
+                }else{
+                    return ResultFactory.buildFailResult("第"+(rIndex+1)+"行第三列样本类型不能为空！");
+                }
+            }
+            if(row == null || row.getCell(0) == null){
+                return ResultFactory.buildFailResult("第"+(rIndex+1)+"行数据不能为空！(请检查是否有空白数据)");
+            }
+            dataList.add(issVo);
+        }
+        return ResultFactory.buildSuccessResult(dataList);
     }
 
     public static File multipartFileToFile(MultipartFile multipartFile) throws IOException {
