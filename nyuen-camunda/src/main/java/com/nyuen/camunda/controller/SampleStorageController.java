@@ -1,14 +1,16 @@
 package com.nyuen.camunda.controller;
 
-import com.alibaba.fastjson.JSON;
 import com.nyuen.camunda.common.SampleStorageStateEnums;
 import com.nyuen.camunda.common.SampleTypeEnums;
 import com.nyuen.camunda.domain.po.LabFridgeLevel;
 import com.nyuen.camunda.domain.po.SampleStorage;
 import com.nyuen.camunda.domain.po.SampleStorageOperation;
+import com.nyuen.camunda.domain.vo.ImportSampleStorageVo;
 import com.nyuen.camunda.domain.vo.SampleStorageBean;
 import com.nyuen.camunda.domain.vo.SampleStorageVo;
 import com.nyuen.camunda.domain.vo.SampleStoreOperateVo;
+import com.nyuen.camunda.mapper.LabFridgeLevelMapper;
+import com.nyuen.camunda.mapper.LabFridgeMapper;
 import com.nyuen.camunda.result.Result;
 import com.nyuen.camunda.result.ResultFactory;
 import com.nyuen.camunda.domain.po.LabFridge;
@@ -16,18 +18,15 @@ import com.nyuen.camunda.service.*;
 import com.nyuen.camunda.utils.*;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
-import org.glassfish.jersey.message.internal.StringBuilderUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import springfox.documentation.annotations.ApiIgnore;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.net.URLDecoder;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 样本回收控制类
@@ -50,6 +49,10 @@ public class SampleStorageController {
     private SampleStorageOperationService sampleStorageOperationService;
     @Resource
     private SampleTypeSavePeriodService sampleTypeSavePeriodService;
+    @Resource
+    private LabFridgeMapper labFridgeMapper;
+    @Resource
+    private LabFridgeLevelMapper labFridgeLevelMapper;
 
     // 启用新的冰箱或选择已有冰箱
     @ApiOperation(value = "启用新的冰箱或选择已有冰箱(flag:true 启用新冰箱，false 选择已有冰箱)", httpMethod = "GET")
@@ -240,12 +243,11 @@ public class SampleStorageController {
             if (200 != result.getCode()) {
                 return result;
             }
-
         }
-        return ResultFactory.buildResult(200,"样本存放冰箱完成",null);
+        return ResultFactory.buildResult(200,sampleStorageVo.getSampleNumList().toString()+"样本存放冰箱完成",null);
     }
 
-    //获取当前盒子剩余位置数量
+    // 获取当前盒子剩余位置数量
     private static int getCurrentBoxRestLocationCount(String sampleType,StringBuilder holeLocation, int perBoxLocationCount){
         // A1-6-F01-01
         // A1-6-B01-G7
@@ -274,6 +276,7 @@ public class SampleStorageController {
         return (perColumnCount-curLocationNumber)+(perColumnCount-getLetterIndex(curLocationLetter)-1)*perColumnCount;
     }
 
+    //获取下一个样本位置编号
     private String getNextLocation(String fridgeNo, int levelNo,String sampleType,StringBuilder sampleLocation, int perColumnCount){
         // A1-2-B05-B6 A1-2-B05-F7 A1-2-B05-G7
         // 1、新的冰箱层级
@@ -351,7 +354,7 @@ public class SampleStorageController {
         return null;
     }
 
-    //获取下一个空闲样本位置编号(除干血片样本类型外)
+    // 获取下一个空闲样本位置编号
     private String getNextFreeLocation(String fridgeNo, int levelNo,String sampleType,StringBuilder sampleLocation, int perColumnCount){
         // A1-2-B05-B6 A1-2-B05-F7 A1-2-B05-G7
         // 1、新的冰箱层级
@@ -572,14 +575,121 @@ public class SampleStorageController {
     //批量导入样本库，主要包括：样本编号，库位编号，样本类型信息
     @ApiOperation(value = "批量导入样本库信息Excel", httpMethod = "POST")
     @PostMapping("/importSampleStorageList")
-    public void importSampleStorageList(MultipartFile multipartFile, HttpServletRequest request) throws Exception {
-        // todo
-        // 1、校验样本编号是否已存在
-        // 2、校验库位是否已占用
-        // 3、校验冰箱、层级、盒子是否已创建
-        // 4、校验库位和样本类型是否一致
-
-
+    public Result importSampleStorageList(MultipartFile multipartFile, HttpServletRequest request) throws Exception {
+        // 上传样本库位信息Excel表格
+        Result excelResult = ExcelUtil.dealSampleStorageDataByExcel(multipartFile);
+        if(200 != excelResult.getCode()){
+            return excelResult;
+        }
+        // 得到Excel表格库位信息数据
+        List<ImportSampleStorageVo> excelIssVoList = (List<ImportSampleStorageVo>) excelResult.getData();
+        // 1、校验是否有重复的样本编号、库位信息
+        int excelSize = excelIssVoList.size();
+        Set<String> sampleNumSet = new HashSet<>();
+        Set<String> sampleLocationSet = new HashSet<>();
+        Set<String> fridgeNoSet = new HashSet<>();// 冰箱编号set
+        Set<String> fridge_level_boxNoSet = new HashSet<>();// 冰箱层级编号_盒子编号set
+        StringBuilder sampleNumRepeatErr = new StringBuilder();
+        StringBuilder sampleLocationRepeatErr = new StringBuilder();
+        for(ImportSampleStorageVo issVo : excelIssVoList){
+            if(sampleNumSet.contains(issVo.getSampleNum())){
+                sampleNumRepeatErr.append(issVo.getSampleNum()).append(",");
+            }
+            if(sampleLocationSet.contains(issVo.getSampleLocation())){
+                sampleLocationRepeatErr.append(issVo.getSampleLocation()).append(",");
+            }
+            String sampleLocation = issVo.getSampleLocation();
+            String sampleTypeName = issVo.getSampleTypeName();
+            String[] strs = sampleLocation.split("-");
+            if(StringUtil.isEmpty(strs[2])){
+                return ResultFactory.buildFailResult("样本编号"+issVo.getSampleNum()+"的库位编号"+sampleLocation+"不合法！");
+            }
+            String sampleType = strs[2].substring(0,1);
+            // 4、校验库位和样本类型是否一致
+            if(!SampleTypeEnums.contains(sampleType) || !SampleTypeEnums.getDescByCode(sampleType).equals(sampleTypeName.trim())){
+                return ResultFactory.buildFailResult("样本编号"+issVo.getSampleNum()+"的库位编号"+sampleLocation+"与样本类型不匹配！");
+            }
+            // todo
+            fridgeNoSet.add(strs[0]);
+            fridge_level_boxNoSet.add(sampleLocation.substring(0,sampleLocation.lastIndexOf("-")));
+            sampleNumSet.add(issVo.getSampleNum());
+            sampleLocationSet.add(issVo.getSampleLocation());
+        }
+        if(excelSize != sampleNumSet.size() || excelSize != sampleLocationSet.size()){
+            return ResultFactory.buildFailResult(sampleNumRepeatErr.insert(0,"样本编号")
+                            .append(sampleLocationRepeatErr.insert(0,"库位编号"))
+                            .append("存在重复，请核对！").toString());
+        }
+        // 2、校验样本编号是否已存在
+        // 3、校验库位是否已占用
+        ImportSampleStorageVo issVo = new ImportSampleStorageVo();
+        issVo.setSampleNumSet(sampleNumSet);
+        issVo.setSampleLocationSet(sampleLocationSet);
+        List<SampleStorage> sampleStorageList = sampleStorageService.getBySampleNumOrLocation(issVo);
+        if(null != sampleStorageList && sampleStorageList.size() >0 ){
+            Set<String> sampleNumUsedSet = new HashSet<>();
+            Set<String> sampleLocationUsedSet = new HashSet<>();
+            sampleStorageList.stream().map(m->{
+                sampleNumUsedSet.add(m.getSampleNum());
+                sampleLocationUsedSet.add(m.getSampleLocation());
+                return m;
+            }).collect(Collectors.toList());
+            return ResultFactory.buildFailResult("样本编号"+sampleNumUsedSet.toString()+",库位编号"
+                    +sampleLocationUsedSet.toString()+"已存在或已被占用，请核对！");
+        }
+        // 5、校验冰箱、层级、盒子是否已创建
+        Set<String> allFridgeNoList = labFridgeMapper.getAllFridgeNo();
+        if(null != allFridgeNoList && 0 != allFridgeNoList.size() && !allFridgeNoList.containsAll(fridgeNoSet)){
+            fridgeNoSet.removeAll(allFridgeNoList);
+            return ResultFactory.buildFailResult(fridgeNoSet.toString()+"以上编号对应冰箱未创建，请核对！");
+        }
+        Set<String> allFridgeLevelBoxNoList = labFridgeLevelMapper.getAllFridgeLevelBoxNo();
+        if(null != allFridgeLevelBoxNoList && allFridgeLevelBoxNoList.size() != 0 && !allFridgeLevelBoxNoList.containsAll(fridge_level_boxNoSet)){
+            fridge_level_boxNoSet.removeAll(allFridgeLevelBoxNoList);
+            return ResultFactory.buildFailResult(fridge_level_boxNoSet.toString()+"以上编号对应层级或盒子未创建，请核对！");
+        }
+        // 6、入库
+        String loginUserIdStr = request.getHeader("loginUserId");
+        String loginUserName = null==request.getHeader("loginUserName")?null: URLDecoder.decode(request.getHeader("loginUserName"));
+        Long loginUserId;
+        try {
+            loginUserId = Long.parseLong(loginUserIdStr);
+        } catch (Exception e) {
+            return ResultFactory.buildFailResult(e.getMessage());
+        }
+        for(ImportSampleStorageVo excelIssVo: excelIssVoList){
+            SampleStorage ss = new SampleStorage();
+            ss.setSampleNum(excelIssVo.getSampleNum());
+            String[] locations = excelIssVo.getSampleLocation().split("-");
+            ss.setFridgeNo(locations[0]);
+            ss.setLevelNo(Integer.parseInt(locations[1]));
+            ss.setBoxNo(locations[2]);
+            ss.setHoleLocation(locations[3]);
+            ss.setSampleLocation(excelIssVo.getSampleLocation());
+            ss.setSampleType(locations[2].substring(0,1));
+            ss.setSampleTypeName(excelIssVo.getSampleTypeName());
+            ss.setCreateTime(new Date());
+            ss.setCreateUserId(loginUserId);
+            ss.setCreateUserName(loginUserName);
+            // 根据样本类型获取样本保存周期（单位：天）
+            int savePeriod = sampleTypeSavePeriodService.getPeriodBySampleType(ss.getSampleType());
+            Date today = new Date();
+            // 计算样本过期时间
+            Date overdueTime = savePeriod !=0 ? DateUtil.getOneDayAfterToday(today, savePeriod) : null;
+            ss.setOverdueTime(overdueTime);
+            ss.setSampleStorageState(318);
+            sampleStorageService.addSampleStorage(ss);
+            //添加入库记录
+            SampleStorageOperation sampleStorageOperation = new SampleStorageOperation();
+            sampleStorageOperation.setSampleNum(excelIssVo.getSampleNum());
+            sampleStorageOperation.setOperateType(SampleStorageStateEnums.getNameByCode(318));
+            sampleStorageOperation.setOperation(SampleStorageStateEnums.getNameByCode(318));
+            Result result = addSampleStoreOperation(sampleStorageOperation, request);
+            if (200 != result.getCode()) {
+                return result;
+            }
+        }
+        return ResultFactory.buildResult(200,sampleNumSet.toString()+"样本存放冰箱完成",null);
     }
 
     public static void main(String[] args) {
@@ -593,6 +703,7 @@ public class SampleStorageController {
 
 //        System.out.println(ssc.getNextLocation("A1", 3,"F",new StringBuilder("A1-2-F09-06"),50));
 //        System.out.println(ssc.getNextLocation("A1", 3,"F",null,50));
+        System.out.println(lastSampleLocation.substring(0,lastSampleLocation.lastIndexOf("-")));
 
     }
 

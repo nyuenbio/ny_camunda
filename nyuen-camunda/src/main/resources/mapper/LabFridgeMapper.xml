@@ -167,4 +167,10 @@
     from lab_fridge
   </select>
 
+  <!--获取所有的冰箱编号-->
+  <select id="getAllFridgeNo" resultType="java.lang.String">
+    SELECT distinct fridge_no as fridgeNo
+    from lab_fridge
+  </select>
+
 </mapper>

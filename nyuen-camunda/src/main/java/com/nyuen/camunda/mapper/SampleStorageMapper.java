@@ -1,6 +1,7 @@
 package com.nyuen.camunda.mapper;
 
 import com.nyuen.camunda.domain.po.SampleStorage;
+import com.nyuen.camunda.domain.vo.ImportSampleStorageVo;
 import com.nyuen.camunda.domain.vo.SampleStoreOperateVo;
 
 import java.util.List;
@@ -74,5 +75,7 @@ public interface SampleStorageMapper {
     List<SampleStorage> getSampleStorageListWithoutPage(Map<String,Object> params);
 
     List<SampleStorage> getInfoByLocation(String sampleLocation);
+
+    List<SampleStorage> getBySampleNumOrLocation(ImportSampleStorageVo importSampleStorageVo);
 
 }

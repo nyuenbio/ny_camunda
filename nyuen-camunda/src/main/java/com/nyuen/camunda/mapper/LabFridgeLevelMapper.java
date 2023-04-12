@@ -1,8 +1,10 @@
 package com.nyuen.camunda.mapper;
 
 import com.nyuen.camunda.domain.po.LabFridgeLevel;
+import com.nyuen.camunda.domain.vo.ImportSampleStorageVo;
 
 import java.util.List;
+import java.util.Set;
 
 public interface LabFridgeLevelMapper {
     /**
@@ -63,5 +65,6 @@ public interface LabFridgeLevelMapper {
 
     List<com.nyuen.camunda.domain.po.LabFridgeLevel> getFridgeUsedLevel(String fridgeNo);
 
-
+    //获取所有的层级-盒子编号
+    Set<String> getAllFridgeLevelBoxNo();
 }

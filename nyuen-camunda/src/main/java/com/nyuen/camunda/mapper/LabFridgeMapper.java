@@ -1,8 +1,10 @@
 package com.nyuen.camunda.mapper;
 
 import com.nyuen.camunda.domain.po.LabFridge;
+import com.nyuen.camunda.domain.vo.ImportSampleStorageVo;
 
 import java.util.List;
+import java.util.Set;
 
 public interface LabFridgeMapper {
     /**
@@ -63,4 +65,8 @@ public interface LabFridgeMapper {
     List<LabFridge> getLabFridgeByNo(String fridgeNo);
 
     List<LabFridge> getAllLabFridges();
+
+    //获取所有的冰箱编号
+    Set<String> getAllFridgeNo();
+
 }

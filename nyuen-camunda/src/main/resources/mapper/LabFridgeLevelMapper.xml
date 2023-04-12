@@ -208,5 +208,10 @@
     order by level_no asc
   </select>
 
+  <!--获取所有的层级-盒子编号-->
+  <select id="getAllFridgeLevelBoxNo" resultType="java.lang.String">
+    SELECT distinct concat(fridge_no,'-',level_no,'-',box_no) as fridgeLevelBoxNo
+    from lab_fridge_level
+  </select>
 
 </mapper>

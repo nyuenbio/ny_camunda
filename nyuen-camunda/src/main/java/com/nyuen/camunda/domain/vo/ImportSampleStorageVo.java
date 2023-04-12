@@ -2,6 +2,8 @@ package com.nyuen.camunda.domain.vo;
 
 import lombok.Data;
 
+import java.util.Set;
+
 /**
  * TODO
  *
@@ -14,5 +16,10 @@ public class ImportSampleStorageVo {
     private String sampleNum;
     private String sampleLocation;
     private String sampleTypeName;
+
+    private Set<String> sampleNumSet;
+    private Set<String> sampleLocationSet;
+    private int levelNo;
+    private String boxNo;
 
 }

@@ -2,6 +2,7 @@ package com.nyuen.camunda.service.impl;
 
 import com.nyuen.camunda.common.PageBean;
 import com.nyuen.camunda.domain.po.SampleStorage;
+import com.nyuen.camunda.domain.vo.ImportSampleStorageVo;
 import com.nyuen.camunda.domain.vo.SampleStoreOperateVo;
 import com.nyuen.camunda.mapper.SampleStorageMapper;
 import com.nyuen.camunda.service.SampleStorageService;
@@ -59,4 +60,10 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     public List<SampleStorage> getInfoByLocation(String sampleLocation) {
         return sampleStorageMapper.getInfoByLocation(sampleLocation);
     }
+
+    @Override
+    public List<SampleStorage> getBySampleNumOrLocation(ImportSampleStorageVo importSampleStorageVo) {
+        return sampleStorageMapper.getBySampleNumOrLocation(importSampleStorageVo);
+    }
+
 }
