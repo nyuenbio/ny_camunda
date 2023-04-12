@@ -642,12 +642,18 @@ public class SampleStorageController {
         }
         // 5、校验冰箱、层级、盒子是否已创建
         Set<String> allFridgeNoList = labFridgeMapper.getAllFridgeNo();
-        if(null != allFridgeNoList && 0 != allFridgeNoList.size() && !allFridgeNoList.containsAll(fridgeNoSet)){
+        if(null == allFridgeNoList || 0 == allFridgeNoList.size()){
+            return ResultFactory.buildFailResult("未创建冰箱，请核对！");
+        }
+        if(!allFridgeNoList.containsAll(fridgeNoSet)){
             fridgeNoSet.removeAll(allFridgeNoList);
             return ResultFactory.buildFailResult(fridgeNoSet.toString()+"以上编号对应冰箱未创建，请核对！");
         }
         Set<String> allFridgeLevelBoxNoList = labFridgeLevelMapper.getAllFridgeLevelBoxNo();
-        if(null != allFridgeLevelBoxNoList && allFridgeLevelBoxNoList.size() != 0 && !allFridgeLevelBoxNoList.containsAll(fridge_level_boxNoSet)){
+        if(null == allFridgeLevelBoxNoList || allFridgeLevelBoxNoList.size() == 0 ){
+            return ResultFactory.buildFailResult("未创建层级和盒子，请核对！");
+        }
+        if(!allFridgeLevelBoxNoList.containsAll(fridge_level_boxNoSet)){
             fridge_level_boxNoSet.removeAll(allFridgeLevelBoxNoList);
             return ResultFactory.buildFailResult(fridge_level_boxNoSet.toString()+"以上编号对应层级或盒子未创建，请核对！");
         }
@@ -710,11 +716,15 @@ public class SampleStorageController {
         String[] strs = sampleLocation.split("-");
         char locationSampleType = strs[2].charAt(0);
         char locationHoleCode = strs[3].charAt(0);
-        int locationHoleNum = Integer.parseInt(strs[3].substring(1));
+
         //F干血片
         if(sampleType == 70 &&  locationSampleType== 70){
            return true;
         }
+        if(strs[3].substring(1).startsWith("0")){
+            return false;
+        }
+        int locationHoleNum = Integer.parseInt(strs[3].substring(1));
         //B外周血
         if(sampleType == 66 && locationSampleType == 66){
             return locationHoleCode >= 65 && locationHoleCode <= 71 && locationHoleNum >= 1 && locationHoleNum <= 9;
