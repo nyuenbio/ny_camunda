@@ -592,9 +592,9 @@ public class SampleStorageController {
         StringBuilder sampleNumRepeatErr = new StringBuilder();
         StringBuilder sampleLocationRepeatErr = new StringBuilder();
         for(ImportSampleStorageVo issVo : excelIssVoList){
-            //校验样本编号是否合法
-            if(!isSampleLocationValid(issVo.getSampleNum(), issVo.getSampleType().charAt(0))){
-                return ResultFactory.buildFailResult("样本编号"+issVo.getSampleNum()+"不合法！");
+            //校验库位编号是否合法
+            if(!isSampleLocationValid(issVo.getSampleLocation(), issVo.getSampleType().charAt(0))){
+                return ResultFactory.buildFailResult("库位编号"+issVo.getSampleLocation()+"不合法！");
             }
             if(sampleNumSet.contains(issVo.getSampleNum())){
                 sampleNumRepeatErr.append(issVo.getSampleNum()).append(",");
@@ -695,6 +695,7 @@ public class SampleStorageController {
         return ResultFactory.buildResult(200,sampleNumSet.toString()+"样本存放冰箱完成",null);
     }
 
+    //校验库位编号是否合法
     private boolean isSampleLocationValid(String sampleLocation, char sampleType){
         // B外周血： 7*7 , A1-G7
         // S口腔拭子，DNA： 9*9 , A1-J9
@@ -709,20 +710,20 @@ public class SampleStorageController {
         String[] strs = sampleLocation.split("-");
         char locationSampleType = strs[2].charAt(0);
         char locationHoleCode = strs[3].charAt(0);
-        int locationHoleNum = Integer.parseInt(strs[3].substring(0,1));
+        int locationHoleNum = Integer.parseInt(strs[3].substring(1));
         //F干血片
         if(sampleType == 70 &&  locationSampleType== 70){
            return true;
         }
         //B外周血
         if(sampleType == 66 && locationSampleType == 66){
-            if(locationHoleCode >= 65 && locationHoleCode <= 71 && locationHoleNum != 0){
+            if(locationHoleCode >= 65 && locationHoleCode <= 71 && locationHoleNum >= 1 && locationHoleNum <= 9){
                 return true;
             }
         }
         //D DNA,S口腔拭子
         if((sampleType == 68 && locationSampleType == 68) || (sampleType == 83 && locationSampleType == 83)){
-            if(locationHoleCode != 73 && locationHoleCode >= 65 && locationHoleCode <= 74 && locationHoleNum != 0){
+            if(locationHoleCode != 73 && locationHoleCode >= 65 && locationHoleCode <= 74 && locationHoleNum >= 1 && locationHoleNum <= 9){
                 return true;
             }
         }
@@ -740,7 +741,8 @@ public class SampleStorageController {
 
 //        System.out.println(ssc.getNextLocation("A1", 3,"F",new StringBuilder("A1-2-F09-06"),50));
 //        System.out.println(ssc.getNextLocation("A1", 3,"F",null,50));
-        System.out.println(lastSampleLocation.charAt(0));
+        System.out.println(ssc.isSampleLocationValid(lastSampleLocation, 'B'));
+        System.out.println(ssc.isSampleLocationValid("A1-2-B02-M1", 'B'));
 
     }
 
