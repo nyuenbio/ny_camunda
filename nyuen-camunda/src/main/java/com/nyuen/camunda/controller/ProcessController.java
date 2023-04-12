@@ -283,8 +283,10 @@ public class ProcessController {
                 resultCheck.setAssayType(rowList.get(1).substring(0,1));
                 resultCheck.setCreateUser(assignee);
                 resultCheck.setCreateTime(new Date());
+                //检测结果取值：SNP取得是call这一栏，CNV需要取gene Hap这一栏
                 if(null != rowList.get(6) && "CNV".equalsIgnoreCase(rowList.get(5).trim())){
                     resultCheck.setAssayType("CNV");
+                    resultCheck.setCallResult(rowList.get(4));
                 }
                 nyuenResultCheckMapper.insertSelective(resultCheck);
             }
