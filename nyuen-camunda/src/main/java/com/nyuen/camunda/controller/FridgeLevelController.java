@@ -79,8 +79,9 @@ public class FridgeLevelController {
             labFridgeLevel.setBoxIndex(curBoxIndex+i);
             if(curBoxIndex+i < 10){
                 labFridgeLevel.setBoxNo(sampleType+"0"+labFridgeLevel.getBoxIndex());
+            }else {
+                labFridgeLevel.setBoxNo(sampleType + labFridgeLevel.getBoxIndex());
             }
-            labFridgeLevel.setBoxNo(sampleType+labFridgeLevel.getBoxIndex());
             labFridgeLevel.setCreateUserId(loginUserId);
             labFridgeLevel.setCreateUserName(loginUserName);
             labFridgeLevel.setCreateTime(new Date());

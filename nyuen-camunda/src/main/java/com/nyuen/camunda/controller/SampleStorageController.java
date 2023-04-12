@@ -244,7 +244,7 @@ public class SampleStorageController {
                 return result;
             }
         }
-        return ResultFactory.buildResult(200,sampleStorageVo.getSampleNumList().toString()+"样本存放冰箱完成",null);
+        return ResultFactory.buildResult(200,"样本存放冰箱完成",null);
     }
 
     // 获取当前盒子剩余位置数量
@@ -619,8 +619,8 @@ public class SampleStorageController {
             sampleLocationSet.add(issVo.getSampleLocation());
         }
         if(excelSize != sampleNumSet.size() || excelSize != sampleLocationSet.size()){
-            return ResultFactory.buildFailResult(sampleNumRepeatErr.insert(0,"样本编号")
-                            .append(sampleLocationRepeatErr.insert(0,"库位编号"))
+            return ResultFactory.buildFailResult((sampleNumRepeatErr.length() == 0?new StringBuilder():sampleNumRepeatErr.insert(0,"样本编号"))
+                            .append((sampleLocationRepeatErr.length() == 0?"":sampleLocationRepeatErr.insert(0,"库位编号")))
                             .append("存在重复，请核对！").toString());
         }
         // 2、校验样本编号是否已存在
@@ -692,13 +692,13 @@ public class SampleStorageController {
                 return result;
             }
         }
-        return ResultFactory.buildResult(200,sampleNumSet.toString()+"样本存放冰箱完成",null);
+        return ResultFactory.buildResult(200,"样本存放冰箱完成",null);
     }
 
     //校验库位编号是否合法
     private boolean isSampleLocationValid(String sampleLocation, char sampleType){
         // B外周血： 7*7 , A1-G7
-        // S口腔拭子，DNA： 9*9 , A1-J9
+        // S口腔拭子，DNA： 9*9 , A1-J9(除去 I)
         // F干血片 A1-6-F01-01
         if(StringUtil.isEmpty(sampleLocation)){
             return false;
@@ -717,15 +717,11 @@ public class SampleStorageController {
         }
         //B外周血
         if(sampleType == 66 && locationSampleType == 66){
-            if(locationHoleCode >= 65 && locationHoleCode <= 71 && locationHoleNum >= 1 && locationHoleNum <= 9){
-                return true;
-            }
+            return locationHoleCode >= 65 && locationHoleCode <= 71 && locationHoleNum >= 1 && locationHoleNum <= 9;
         }
         //D DNA,S口腔拭子
         if((sampleType == 68 && locationSampleType == 68) || (sampleType == 83 && locationSampleType == 83)){
-            if(locationHoleCode != 73 && locationHoleCode >= 65 && locationHoleCode <= 74 && locationHoleNum >= 1 && locationHoleNum <= 9){
-                return true;
-            }
+            return locationHoleCode != 73 && locationHoleCode >= 65 && locationHoleCode <= 74 && locationHoleNum >= 1 && locationHoleNum <= 9;
         }
         return false;
     }
