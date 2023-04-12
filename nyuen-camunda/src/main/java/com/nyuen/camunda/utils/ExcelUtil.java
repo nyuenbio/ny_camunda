@@ -2,6 +2,7 @@ package com.nyuen.camunda.utils;
 
 import com.alibaba.fastjson.JSONArray;
 import com.nyuen.camunda.common.SampleStorageStateEnums;
+import com.nyuen.camunda.common.SampleTypeEnums;
 import com.nyuen.camunda.domain.po.SampleLabInfo;
 import com.nyuen.camunda.domain.po.SampleStorage;
 import com.nyuen.camunda.domain.vo.ImportSampleStorageVo;
@@ -141,6 +142,7 @@ public class ExcelUtil {
                     //System.out.println("第三列是样本类型 ==> "+cell2.toString());
                     cell2.setCellType(CellType.STRING);
                     issVo.setSampleTypeName(cell2.toString().trim());
+                    issVo.setSampleType(SampleTypeEnums.getCodeByDesc(cell2.toString().trim()));
                 }else{
                     return ResultFactory.buildFailResult("第"+(rIndex+1)+"行第三列样本类型不能为空！");
                 }

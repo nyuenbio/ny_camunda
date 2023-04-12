@@ -24,6 +24,15 @@ public enum SampleTypeEnums {
         return null;
     }
 
+    public static String getCodeByDesc(String desc){
+        for(SampleTypeEnums ste : SampleTypeEnums.values()){
+            if(ste.getDescription().equals(desc)){
+                return ste.toString();
+            }
+        }
+        return null;
+    }
+
     public static boolean contains(String str){
         for(SampleTypeEnums ste : SampleTypeEnums.values()){
             if(ste.toString().equals(str)){

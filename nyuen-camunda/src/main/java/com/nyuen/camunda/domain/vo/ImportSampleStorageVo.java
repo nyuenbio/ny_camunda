@@ -16,6 +16,7 @@ public class ImportSampleStorageVo {
     private String sampleNum;
     private String sampleLocation;
     private String sampleTypeName;
+    private String sampleType;
 
     private Set<String> sampleNumSet;
     private Set<String> sampleLocationSet;

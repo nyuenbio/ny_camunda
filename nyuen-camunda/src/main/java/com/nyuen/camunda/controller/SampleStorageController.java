@@ -592,6 +592,10 @@ public class SampleStorageController {
         StringBuilder sampleNumRepeatErr = new StringBuilder();
         StringBuilder sampleLocationRepeatErr = new StringBuilder();
         for(ImportSampleStorageVo issVo : excelIssVoList){
+            //校验样本编号是否合法
+            if(!isSampleLocationValid(issVo.getSampleNum(), issVo.getSampleType().charAt(0))){
+                return ResultFactory.buildFailResult("样本编号"+issVo.getSampleNum()+"不合法！");
+            }
             if(sampleNumSet.contains(issVo.getSampleNum())){
                 sampleNumRepeatErr.append(issVo.getSampleNum()).append(",");
             }
@@ -609,7 +613,6 @@ public class SampleStorageController {
             if(!SampleTypeEnums.contains(sampleType) || !SampleTypeEnums.getDescByCode(sampleType).equals(sampleTypeName.trim())){
                 return ResultFactory.buildFailResult("样本编号"+issVo.getSampleNum()+"的库位编号"+sampleLocation+"与样本类型不匹配！");
             }
-            // todo
             fridgeNoSet.add(strs[0]);
             fridge_level_boxNoSet.add(sampleLocation.substring(0,sampleLocation.lastIndexOf("-")));
             sampleNumSet.add(issVo.getSampleNum());
@@ -692,6 +695,40 @@ public class SampleStorageController {
         return ResultFactory.buildResult(200,sampleNumSet.toString()+"样本存放冰箱完成",null);
     }
 
+    private boolean isSampleLocationValid(String sampleLocation, char sampleType){
+        // B外周血： 7*7 , A1-G7
+        // S口腔拭子，DNA： 9*9 , A1-J9
+        // F干血片 A1-6-F01-01
+        if(StringUtil.isEmpty(sampleLocation)){
+            return false;
+        }
+        if(!SampleTypeEnums.contains(sampleType+"")){
+            return false;
+        }
+        //A1-1-B01-F5
+        String[] strs = sampleLocation.split("-");
+        char locationSampleType = strs[2].charAt(0);
+        char locationHoleCode = strs[3].charAt(0);
+        int locationHoleNum = Integer.parseInt(strs[3].substring(0,1));
+        //F干血片
+        if(sampleType == 70 &&  locationSampleType== 70){
+           return true;
+        }
+        //B外周血
+        if(sampleType == 66 && locationSampleType == 66){
+            if(locationHoleCode >= 65 && locationHoleCode <= 71 && locationHoleNum != 0){
+                return true;
+            }
+        }
+        //D DNA,S口腔拭子
+        if((sampleType == 68 && locationSampleType == 68) || (sampleType == 83 && locationSampleType == 83)){
+            if(locationHoleCode != 73 && locationHoleCode >= 65 && locationHoleCode <= 74 && locationHoleNum != 0){
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static void main(String[] args) {
         SampleStorageController ssc = new SampleStorageController();
         String lastSampleLocation = "A1-1-B01-F5";
@@ -703,7 +740,7 @@ public class SampleStorageController {
 
 //        System.out.println(ssc.getNextLocation("A1", 3,"F",new StringBuilder("A1-2-F09-06"),50));
 //        System.out.println(ssc.getNextLocation("A1", 3,"F",null,50));
-        System.out.println(lastSampleLocation.substring(0,lastSampleLocation.lastIndexOf("-")));
+        System.out.println(lastSampleLocation.charAt(0));
 
     }
 
