@@ -269,15 +269,17 @@ public class SampleStorageController {
         String[] strArray = holeLocation.toString().split("-");
         int perColumnCount = (int)Math.sqrt(perBoxLocationCount);
         String curLocationLetter = strArray[3].substring(0,1);
-        int curLocationNumber = Integer.parseInt(strArray[3].substring(1));
-        //干血片类型样本：A1-2-F01-01无孔位概念，perColumnCount等于fMax
+        int curLocationNumber = 0;
+        //干血片类型样本：A1-2-F01-1无孔位概念，perColumnCount等于fMax
         if(SampleTypeEnums.F.toString().equals(sampleType)){
+            curLocationNumber = Integer.parseInt(strArray[3]);
             if(curLocationNumber > perBoxLocationCount){
                 return -1;
             }else{
                 return perBoxLocationCount-curLocationNumber;
             }
         }
+        curLocationNumber = Integer.parseInt(strArray[3].substring(1));
         if(-1 == getLetterIndex(curLocationLetter)){
             return -1;
         }
@@ -382,7 +384,7 @@ public class SampleStorageController {
         // 1、已有冰箱层级
         String[] strArray = sampleLocation.toString().split("-");
         String curLocationLetter = strArray[3].substring(0,1);
-        int curLocationNumber = Integer.parseInt(strArray[3].substring(1));
+        int curLocationNumber = 0;
         //干血片类型样本：A1-2-F01-1，无孔位概念，perColumnCount等于fMax TODO
         // 最后一个位置是纯数字,不能是A1-2-F01-01
         if(SampleTypeEnums.F.toString().equals(sampleType)){
@@ -401,7 +403,7 @@ public class SampleStorageController {
 //                        return getNextFreeLocation(fridgeNo,levelNo,sampleType,new StringBuilder(location11),perColumnCount);
 //                    }
 //                } else {
-                    String location12 = sampleLocation.substring(0, sampleLocation.lastIndexOf("-")) + nextLocationNumber;
+                    String location12 = sampleLocation.substring(0, sampleLocation.lastIndexOf("-")+1) + nextLocationNumber;
                     if(isLocationFree(location12)) {
                         return location12;
                     }else{
@@ -439,6 +441,7 @@ public class SampleStorageController {
         }
         //其他类型样本
         //情形一：当前行未满
+        curLocationNumber = Integer.parseInt(strArray[3].substring(1));
         if(curLocationNumber < perColumnCount){
             int nextLocationNumber = curLocationNumber+1;
             String otherLocation11 = sampleLocation.substring(0,sampleLocation.length()-1)+nextLocationNumber;
@@ -726,7 +729,7 @@ public class SampleStorageController {
         }
         //A1-1-B01-F5
         String[] strs = sampleLocation.split("-");
-        if(StringUtil.isEmpty(strs[2]) || strs[2].length() < 2){
+        if(strs.length != 4 || StringUtil.isEmpty(strs[2]) || strs[2].length() < 2 || StringUtil.isEmpty(strs[3])){
             return false;
         }
         char locationSampleType = strs[2].charAt(0);
