@@ -278,6 +278,9 @@ public class SampleStorageController {
         if(null == sampleStorageVo || sampleStorageVo.getSampleNumList() == null || sampleStorageVo.getSampleNumList().size() == 0){
             return ResultFactory.buildFailResult("请选择要储存的样本编号！");
         }
+        if(StringUtil.isEmpty(sampleStorageVo.getFridgeNo()) || 0 == sampleStorageVo.getLevelNo()){
+            return ResultFactory.buildFailResult("请选择冰箱和层级！");
+        }
         if(StringUtil.isEmpty(sampleStorageVo.getBoxNo())){
             return ResultFactory.buildFailResult("请至少选择1个盒子！");
         }
