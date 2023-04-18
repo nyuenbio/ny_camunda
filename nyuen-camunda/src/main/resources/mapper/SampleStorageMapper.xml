@@ -292,6 +292,9 @@
     from sample_storage
     where fridge_no = #{fridgeNo,jdbcType=VARCHAR}
     and level_no = #{levelNo,jdbcType=INTEGER}
+    <if test="boxNo != null and boxNo != ''">
+      and box_no= #{boxNo,jdbcType=VARCHAR}
+    </if>
     order by create_time desc,id desc
     limit 0,1
   </select>
@@ -430,10 +433,10 @@
       #{item}
     </foreach>
     <if test="sampleLocationSet != null">
-    or sample_location in
-    <foreach collection="sampleLocationSet" index="index" item="item" open="(" close=")" separator=",">
-      #{item}
-    </foreach>
+      or sample_location in
+      <foreach collection="sampleLocationSet" index="index" item="item" open="(" close=")" separator=",">
+        #{item}
+      </foreach>
     </if>
     order by sample_num
   </select>

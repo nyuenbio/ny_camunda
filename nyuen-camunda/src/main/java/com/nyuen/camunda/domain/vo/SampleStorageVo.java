@@ -19,4 +19,5 @@ public class SampleStorageVo {
     private int boxNum;
     private int fMax;
     private List<String> sampleNumList;
+    private String boxNo;
 }

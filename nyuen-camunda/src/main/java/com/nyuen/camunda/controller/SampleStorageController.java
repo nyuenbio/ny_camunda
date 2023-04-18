@@ -255,6 +255,125 @@ public class SampleStorageController {
         return ResultFactory.buildResult(200,"样本存放冰箱完成",null);
     }
 
+    /**
+     * 选择盒子-样本入库
+     * B（外周血） 7*7=49
+     * S（口腔拭子），D（DNA） 9*9=81
+     * F（干血片） 50
+     * @param sampleStorageVo 样本
+     * @param request HttpServletRequest
+     * @return 返回值
+     */
+    @ApiOperation(value = "选择盒子-样本回收存储(需设置干血片最大数量，默认为50)", httpMethod = "POST")
+    @PostMapping("/chooseBoxSampleStore")
+    public Result chooseBoxSampleStore(@RequestBody SampleStorageVo sampleStorageVo, HttpServletRequest request){
+        // 1、启用冰箱:填写新的冰箱编号或选择已有的冰箱
+        // 2、启用层数:启用冰箱中新的层级或选择已启用的层级，若启用新的层级需选择保存样本和盒子类型，若选择已启动的层级需要提示目前层级保存的样本类型
+        // 3、选择样本类型+启用盒子数量（外周血：7*7 A1-G7，口腔拭子、DNA：9*9 A1-J9，除字母I）
+        // 4、选择位置
+        // 5、入库
+        if(null == sampleStorageVo || sampleStorageVo.getSampleNumList() == null || sampleStorageVo.getSampleNumList().size() == 0){
+            return ResultFactory.buildFailResult("请选择要储存的样本编号！");
+        }
+        if(StringUtil.isEmpty(sampleStorageVo.getBoxNo())){
+            return ResultFactory.buildFailResult("请至少选择1个盒子！");
+        }
+        if(!SampleTypeEnums.contains(sampleStorageVo.getSampleType())){
+            return ResultFactory.buildFailResult("请选择正确的样本类型！");
+        }
+        // B外周血 7*7 A1-G7
+        // S口腔拭子，DNA 9*9 A1-J9
+        // F干血片 A1-6-F01-1
+        // A1-6-B01-G7
+        // 1、获取最后一个样本的位置编号
+        //      *冰箱编号和层级数必选：根据冰箱编号和层级数查询最后一个样本的位置编号
+        //      String lastSampleLocation = "A1-1-B01-A1"; 干血片 A1-2-F01-1
+        StringBuilder lastSampleLocation = new StringBuilder(sampleStorageVo.getFridgeNo()+"-"+sampleStorageVo.getLevelNo()
+        +"-"+sampleStorageVo.getBoxNo()+"-");
+        if("F".equals(sampleStorageVo.getSampleType())){
+            lastSampleLocation.append("1");
+        }else {
+            lastSampleLocation.append("A1");
+        }
+        // 2、判断空闲库位是否充足：样本数量 <--> 盒子数量，当前盒子剩余数量+（盒子数-1）*49 or 81
+        int sampleCount = sampleStorageVo.getSampleNumList().size();
+        int perBoxLocationCount = SampleTypeEnums.B.toString().equals(sampleStorageVo.getSampleType()) ? 49 : (SampleTypeEnums.F.toString().equals(sampleStorageVo.getSampleType()) ? sampleStorageVo.getFMax() : 81);
+        //当前盒子剩余空闲库位
+        int currentBoxRestLocationCount = getCurrentBoxRestLocationCount(sampleStorageVo.getSampleType(),lastSampleLocation,perBoxLocationCount);
+        if(-1 == currentBoxRestLocationCount){
+            return ResultFactory.buildFailResult("计算剩余库位编号出错，样本位置编号错误！");
+        }
+        if(currentBoxRestLocationCount < sampleCount){
+            return ResultFactory.buildFailResult("空闲库位不足！所选样本数量"+sampleCount+"，空闲库位数量"+currentBoxRestLocationCount);
+        }
+        String loginUserIdStr = request.getHeader("loginUserId");
+        String loginUserName = null==request.getHeader("loginUserName")?null: URLDecoder.decode(request.getHeader("loginUserName"));
+        Long loginUserId;
+        try {
+            loginUserId = Long.parseLong(loginUserIdStr);
+        } catch (Exception e) {
+            return ResultFactory.buildFailResult(e.getMessage());
+        }
+        // 3、getNextFreeLocation() && sample store
+        // 干血片类型样本：A1-2-F01-01无孔位概念，perColumnCount等于fMax
+        int perColumnCount =SampleTypeEnums.F.toString().equals(sampleStorageVo.getSampleType()) ? sampleStorageVo.getFMax ():(int)Math.sqrt(perBoxLocationCount);
+        // 根据样本类型获取样本保存周期（单位：天）
+        int savePeriod = sampleTypeSavePeriodService.getPeriodBySampleType(sampleStorageVo.getSampleType());
+        Date today = new Date();
+        // 计算样本过期时间
+        Date overdueTime = savePeriod !=0 ? DateUtil.getOneDayAfterToday(today, savePeriod) : null;
+        // 校验样本编号是否存在
+        Set<String> sampleNumSet = new HashSet<>(sampleStorageVo.getSampleNumList());
+        if(sampleNumSet.size() != sampleStorageVo.getSampleNumList().size()){
+            return ResultFactory.buildFailResult("输入的样本编号存在重复，请核对！");
+        }
+        ImportSampleStorageVo issVo = new ImportSampleStorageVo();
+        issVo.setSampleNumSet(sampleNumSet);
+        issVo.setSampleLocationSet(null);
+        List<SampleStorage> sampleStorageList = sampleStorageService.getBySampleNumOrLocation(issVo);
+        if(null != sampleStorageList && sampleStorageList.size() >0 ){
+            Set<String> sampleNumUsedSet = new HashSet<>();
+            sampleStorageList.stream().map(m->{
+                sampleNumUsedSet.add(m.getSampleNum());
+                return m;
+            }).collect(Collectors.toList());
+            return ResultFactory.buildFailResult("样本编号"+sampleNumUsedSet.toString()+"已存在，请核对！");
+        }
+        for(String sampleNum : sampleStorageVo.getSampleNumList()){
+            String nextLocation = getNextFreeLocation(sampleStorageVo.getFridgeNo(),sampleStorageVo.getLevelNo(),
+                    sampleStorageVo.getSampleType(),lastSampleLocation,perColumnCount);
+            if(null == nextLocation){
+                return ResultFactory.buildFailResult("计算下一个库位编号出错，请联系管理员！");
+            }
+            lastSampleLocation = new StringBuilder(nextLocation);
+            SampleStorage ss1 = new SampleStorage();
+            ss1.setSampleNum(sampleNum);
+            ss1.setFridgeNo(sampleStorageVo.getFridgeNo());
+            ss1.setLevelNo(sampleStorageVo.getLevelNo());
+            ss1.setBoxNo(nextLocation.split("-")[2]);
+            ss1.setHoleLocation(nextLocation.split("-")[3]);
+            ss1.setSampleLocation(nextLocation);
+            ss1.setSampleType(sampleStorageVo.getSampleType());
+            ss1.setSampleTypeName(SampleTypeEnums.getDescByCode(sampleStorageVo.getSampleType()));
+            ss1.setOverdueTime(overdueTime);
+            ss1.setSampleStorageState(318);
+            ss1.setCreateUserId(loginUserId);
+            ss1.setCreateUserName(loginUserName);
+            ss1.setCreateTime(today);
+            sampleStorageService.addSampleStorage(ss1);
+            //添加入库记录
+            SampleStorageOperation sampleStorageOperation = new SampleStorageOperation();
+            sampleStorageOperation.setSampleNum(sampleNum);
+            sampleStorageOperation.setOperateType(SampleStorageStateEnums.getNameByCode(318));
+            sampleStorageOperation.setOperation(SampleStorageStateEnums.getNameByCode(318));
+            Result result = addSampleStoreOperation(sampleStorageOperation, request);
+            if (200 != result.getCode()) {
+                return result;
+            }
+        }
+        return ResultFactory.buildResult(200,"样本存放冰箱完成",null);
+    }
+
     // 获取当前盒子剩余位置数量
     private static int getCurrentBoxRestLocationCount(String sampleType,StringBuilder holeLocation, int perBoxLocationCount){
         // A1-6-F01-01
@@ -371,7 +490,7 @@ public class SampleStorageController {
         if(null == sampleLocation){
             String newFridgeNextLocation = fridgeNo+ "-" + levelNo + "-"+sampleType+"01";
             if(SampleTypeEnums.F.toString().equals(sampleType)){
-                newFridgeNextLocation = newFridgeNextLocation+"-01";
+                newFridgeNextLocation = newFridgeNextLocation+"-1";
             }else {
                 newFridgeNextLocation = newFridgeNextLocation+"-A1";
             }
@@ -743,11 +862,11 @@ public class SampleStorageController {
             return false;
         }
         int locationHoleNum = Integer.parseInt(strs[3].substring(1));
-        //B外周血
+        //B外周血 7*7
         if(sampleType == 66 && locationSampleType == 66){
-            return locationHoleCode >= 65 && locationHoleCode <= 71 && locationHoleNum >= 1 && locationHoleNum <= 9;
+            return locationHoleCode >= 65 && locationHoleCode <= 71 && locationHoleNum >= 1 && locationHoleNum <= 7;
         }
-        //D DNA,S口腔拭子
+        //D DNA,S口腔拭子 9*9
         if((sampleType == 68 && locationSampleType == 68) || (sampleType == 83 && locationSampleType == 83)){
             return locationHoleCode != 73 && locationHoleCode >= 65 && locationHoleCode <= 74 && locationHoleNum >= 1 && locationHoleNum <= 9;
         }
@@ -765,10 +884,9 @@ public class SampleStorageController {
 
 //        System.out.println(ssc.getNextLocation("A1", 3,"F",new StringBuilder("A1-2-F09-06"),50));
 //        System.out.println(ssc.getNextLocation("A1", 3,"F",null,50));
-        System.out.println(ssc.isSampleLocationValid(lastSampleLocation, 'B'));
-        System.out.println(ssc.isSampleLocationValid("A1-4-S01-B1", 'S'));
-        System.out.println("A100".substring(1));
-        System.out.println(lastSampleLocation.substring(0, lastSampleLocation.lastIndexOf("-")));
+//        System.out.println(ssc.isSampleLocationValid(lastSampleLocation, 'B'));
+        System.out.println(ssc.isSampleLocationValid("A1-6-B01-B8", 'B'));
+
 
     }
 
