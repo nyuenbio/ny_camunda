@@ -229,8 +229,8 @@ public class ModifyController {
     }
 
     @ApiOperation(value = "撤销用户任务(未测试)", httpMethod = "DELETE")
-    @DeleteMapping("/cancelTask")
-    public Result cancelTask(String procId,@ApiParam("当前用户id") String userId){
+    @DeleteMapping("/cancelUserTask")
+    public Result cancelUserTask(String procId,@ApiParam("当前用户id") String userId,@ApiParam("撤回理由") String cancelReason){
         // 撤销用户任务 todo
         // 1、验证 流程任务状态，当前执行人为发起人
         if(!checkProcessStarter(procId,userId)){
@@ -259,6 +259,7 @@ public class ModifyController {
         Map<String, Object> taskVariable = new HashMap<>();
         //设置当前处理人
         taskVariable.put("assignee", assignee);
+        taskVariable.put("remark",String.format("%s 用户执行了撤回操作，撤回原因：%s", userId, cancelReason));
         runtimeService.createProcessInstanceModification(task.getProcessInstanceId())
                 //关闭相关任务
                 .cancelActivityInstance(getInstanceIdForActivity(activityInstance, task.getTaskDefinitionKey()))
@@ -269,7 +270,53 @@ public class ModifyController {
                 .setVariables(taskVariable)
                 .execute();
         // 3、删除此流程实例
-        runtimeService.deleteProcessInstance(task.getProcessInstanceId(), String.format("%s 用户执行了撤回操作", userId));
+        runtimeService.deleteProcessInstance(task.getProcessInstanceId(), String.format("%s 用户执行了撤回操作，撤回原因：%s", userId, cancelReason));
+        return ResultFactory.buildResult(200,"撤回成功", null);
+    }
+
+    @ApiOperation(value = "撤销流程任务(未测试)", httpMethod = "DELETE")
+    @DeleteMapping("/cancelTask")
+    public Result cancelTask(String procId,@ApiParam("当前用户id") String userId,@ApiParam("撤回理由") String cancelReason){
+        // 撤销流程任务 todo
+        // 1、验证 流程任务状态，当前执行人为发起人
+        if(!checkProcessStarter(procId,userId)){
+            return ResultFactory.buildFailResult("撤回失败：当前执行人不是流程发起人，请核实！");
+        }
+        if(!checkProcessInstanceState(procId)){
+            return ResultFactory.buildFailResult("撤回失败：流程并未在流转中或流程已结束，请核实！");
+        }
+        List<Task> taskList = taskService.createTaskQuery().processInstanceId(procId).list();
+        if(CollectionUtils.isEmpty(taskList)){
+            return ResultFactory.buildFailResult("撤回失败：该流程上无任务流转，请核实！");
+        }
+        Task task = taskList.get(0);
+        List<HistoricActivityInstance> historicActivityInstanceList = historyService.createHistoricActivityInstanceQuery()
+                .processInstanceId(task.getProcessInstanceId())
+//                .activityType("userTask")
+                .finished().orderByHistoricActivityInstanceEndTime()
+                .asc().list();
+        if(historicActivityInstanceList == null || historicActivityInstanceList.isEmpty()){
+            return ResultFactory.buildFailResult("撤回失败：该流程上无任务，请核实！");
+        }
+        // 2、取消 取消产生的任务，查找此流程产生的task并取消
+        ActivityInstance activityInstance = runtimeService.getActivityInstance(task.getProcessInstanceId());
+        String toActId = historicActivityInstanceList.get(0).getActivityId();
+        String assignee = historicActivityInstanceList.get(0).getAssignee();
+        Map<String, Object> taskVariable = new HashMap<>();
+        //设置当前处理人
+        taskVariable.put("assignee", assignee);
+        taskVariable.put("remark",String.format("%s 用户执行了撤回操作，撤回原因：%s", userId, cancelReason));
+        runtimeService.createProcessInstanceModification(task.getProcessInstanceId())
+                //关闭相关任务
+                .cancelActivityInstance(getInstanceIdForActivity(activityInstance, task.getTaskDefinitionKey()))
+                .setAnnotation("进行了撤回到节点操作")
+                //启动目标活动节点
+                .startBeforeActivity(toActId)
+                //流程的可变参数赋值
+                .setVariables(taskVariable)
+                .execute();
+        // 3、删除此流程实例
+        runtimeService.deleteProcessInstance(task.getProcessInstanceId(), String.format("%s 用户执行了撤回操作，撤回原因：%s", userId, cancelReason));
         return ResultFactory.buildResult(200,"撤回成功", null);
     }
 
