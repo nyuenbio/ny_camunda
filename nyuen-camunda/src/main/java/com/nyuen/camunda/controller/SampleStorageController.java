@@ -11,6 +11,7 @@ import com.nyuen.camunda.domain.vo.SampleStorageVo;
 import com.nyuen.camunda.domain.vo.SampleStoreOperateVo;
 import com.nyuen.camunda.mapper.LabFridgeLevelMapper;
 import com.nyuen.camunda.mapper.LabFridgeMapper;
+import com.nyuen.camunda.mapper.SampleStorageMapper;
 import com.nyuen.camunda.result.Result;
 import com.nyuen.camunda.result.ResultFactory;
 import com.nyuen.camunda.domain.po.LabFridge;
@@ -41,6 +42,8 @@ import java.util.stream.Collectors;
 public class SampleStorageController {
     @Resource
     private SampleStorageService sampleStorageService;
+    @Resource
+    private SampleStorageMapper sampleStorageMapper;
     @Resource
     private LabFridgeService labFridgeService;
     @Resource
@@ -290,17 +293,23 @@ public class SampleStorageController {
         //      String lastSampleLocation = "A1-1-B01-A1"; 干血片 A1-2-F01-1
         StringBuilder lastSampleLocation = new StringBuilder(sampleStorageVo.getFridgeNo()+"-"+sampleStorageVo.getLevelNo()
         +"-"+sampleStorageVo.getBoxNo()+"-");
+        // 使得A1-1-F01-1、A1-2-B01-A1等首个位置能够被获取
         if("F".equals(sampleStorageVo.getSampleType())){
-            lastSampleLocation.append("1");
+            lastSampleLocation.append("0");
         }else {
-            lastSampleLocation.append("A1");
+            lastSampleLocation.append("A0");
         }
         // 2、判断空闲库位是否充足：样本数量 <--> 盒子数量，当前盒子剩余数量+（盒子数-1）*49 or 81
         int sampleCount = sampleStorageVo.getSampleNumList().size();
         int perBoxLocationCount = SampleTypeEnums.B.toString().equals(sampleStorageVo.getSampleType()) ? 49 : (SampleTypeEnums.F.toString().equals(sampleStorageVo.getSampleType()) ? sampleStorageVo.getFMax() : 81);
-        //当前盒子剩余空闲库位
-        int currentBoxRestLocationCount = getCurrentBoxRestLocationCount(sampleStorageVo.getSampleType(),lastSampleLocation,perBoxLocationCount);
-        if(-1 == currentBoxRestLocationCount){
+        //当前盒子剩余空闲库位 todo
+        Map<String,Object> params = new HashMap<>();
+        params.put("fridgeNo",sampleStorageVo.getFridgeNo());
+        params.put("levelNo",sampleStorageVo.getLevelNo());
+        params.put("boxNo",sampleStorageVo.getBoxNo());
+        int currentBoxUsedLocationCount = sampleStorageMapper.getSampleStorageTotal(params);
+        int currentBoxRestLocationCount = perBoxLocationCount - currentBoxUsedLocationCount;//getCurrentBoxRestLocationCount(sampleStorageVo.getSampleType(),lastSampleLocation,perBoxLocationCount);
+        if(currentBoxRestLocationCount < 0){
             return ResultFactory.buildFailResult("计算剩余库位编号出错，样本位置编号错误！");
         }
         if(currentBoxRestLocationCount < sampleCount){
