@@ -366,7 +366,7 @@ public class CamundaController {
         }
         List<HistoricProcessInstance> hiList = hpiQuery
                 .startedBy(sqBean.getAssignee())
-                .orderByProcessInstanceEndTime()
+                .orderByProcessInstanceStartTime()
                 .desc()
                 .listPage((sqBean.getCurrentPage()-1)*sqBean.getPageSize(),sqBean.getPageSize());
         long count = hpiQuery
@@ -377,6 +377,36 @@ public class CamundaController {
         result.put("total",count);
         return ResultFactory.buildSuccessResult(result);
     }
+    // 我撤销的流程 TODO
+    @ApiIgnore
+    @ApiOperation(value = "我撤销/终止的流程", httpMethod = "POST")
+    @PostMapping("/checkByInitiatorTerminated")
+    public Result checkByInitiatorTerminated(@RequestBody SimpleQueryBean sqBean) {
+        HistoricProcessInstanceQuery hpiQuery = historyService.createHistoricProcessInstanceQuery();
+        if(StringUtils.isNoneBlank(sqBean.getName())){
+            hpiQuery.processInstanceBusinessKeyLike("%"+sqBean.getName()+"%");
+        }
+        if(null != sqBean.getStartTime()){
+            hpiQuery.startedAfter(sqBean.getStartTime());
+        }
+        if(null != sqBean.getEndTime()){
+            hpiQuery.startedBefore(sqBean.getEndTime());
+        }
+        List<HistoricProcessInstance> hiList = hpiQuery
+                .startedBy(sqBean.getAssignee())
+                .internallyTerminated()
+                .orderByProcessInstanceStartTime()
+                .desc()
+                .listPage((sqBean.getCurrentPage()-1)*sqBean.getPageSize(),sqBean.getPageSize());
+        long count = hpiQuery
+                .startedBy(sqBean.getAssignee())
+                .count();
+        Map<String,Object> result = new HashMap<>();
+        result.put("rows", CamundaObjectUtil.objectListToJSONArray(hiList));
+        result.put("total",count);
+        return ResultFactory.buildSuccessResult(result);
+    }
+
 
     //5、我的待办流程
     @ApiOperation(value = "我的待办流程",httpMethod = "GET")
