@@ -259,7 +259,7 @@ public class SampleStorageController {
     }
 
     /**
-     * 选择盒子-样本入库
+     * 选择盒子-样本入库：只能选择已有的冰箱、层级和盒子
      * B（外周血） 7*7=49
      * S（口腔拭子），D（DNA） 9*9=81
      * F（干血片） 50
@@ -267,14 +267,10 @@ public class SampleStorageController {
      * @param request HttpServletRequest
      * @return 返回值
      */
-    @ApiOperation(value = "选择盒子-样本回收存储(需设置干血片最大数量，默认为50)", httpMethod = "POST")
+    @ApiOperation(value = "选择盒子-样本回收存储（需设置干血片最大数量，默认为50)", httpMethod = "POST")
     @PostMapping("/chooseBoxSampleStore")
     public Result chooseBoxSampleStore(@RequestBody SampleStorageVo sampleStorageVo, HttpServletRequest request){
-        // 1、启用冰箱:填写新的冰箱编号或选择已有的冰箱
-        // 2、启用层数:启用冰箱中新的层级或选择已启用的层级，若启用新的层级需选择保存样本和盒子类型，若选择已启动的层级需要提示目前层级保存的样本类型
-        // 3、选择样本类型+启用盒子数量（外周血：7*7 A1-G7，口腔拭子、DNA：9*9 A1-J9，除字母I）
-        // 4、选择位置
-        // 5、入库
+        // 只能选择已有的冰箱、层级和盒子
         if(null == sampleStorageVo || sampleStorageVo.getSampleNumList() == null || sampleStorageVo.getSampleNumList().size() == 0){
             return ResultFactory.buildFailResult("请选择要储存的样本编号！");
         }
@@ -290,22 +286,18 @@ public class SampleStorageController {
         // B外周血 7*7 A1-G7
         // S口腔拭子，DNA 9*9 A1-J9
         // F干血片 A1-6-F01-1
-        // A1-6-B01-G7
-        // 1、获取最后一个样本的位置编号
-        //      *冰箱编号和层级数必选：根据冰箱编号和层级数查询最后一个样本的位置编号
-        //      String lastSampleLocation = "A1-1-B01-A1"; 干血片 A1-2-F01-1
         StringBuilder lastSampleLocation = new StringBuilder(sampleStorageVo.getFridgeNo()+"-"+sampleStorageVo.getLevelNo()
         +"-"+sampleStorageVo.getBoxNo()+"-");
-        // 使得A1-1-F01-1、A1-2-B01-A1等首个位置能够被获取
+        // 1、使得A1-1-F01-1、A1-2-B01-A1等首个位置能够被获取
         if("F".equals(sampleStorageVo.getSampleType())){
             lastSampleLocation.append("0");
         }else {
             lastSampleLocation.append("A0");
         }
-        // 2、判断空闲库位是否充足：样本数量 <--> 盒子数量，当前盒子剩余数量+（盒子数-1）*49 or 81
+        // 2、判断盒子空闲库位是否充足：样本数量 <--> 当前盒子剩余数量= （50 or 49 or 81）-已占用数量
         int sampleCount = sampleStorageVo.getSampleNumList().size();
         int perBoxLocationCount = SampleTypeEnums.B.toString().equals(sampleStorageVo.getSampleType()) ? 49 : (SampleTypeEnums.F.toString().equals(sampleStorageVo.getSampleType()) ? sampleStorageVo.getFMax() : 81);
-        //当前盒子剩余空闲库位 todo
+        //当前盒子剩余空闲库位
         Map<String,Object> params = new HashMap<>();
         params.put("fridgeNo",sampleStorageVo.getFridgeNo());
         params.put("levelNo",sampleStorageVo.getLevelNo());
@@ -327,7 +319,7 @@ public class SampleStorageController {
             return ResultFactory.buildFailResult(e.getMessage());
         }
         // 3、getNextFreeLocation() && sample store
-        // 干血片类型样本：A1-2-F01-01无孔位概念，perColumnCount等于fMax
+        // 干血片类型样本：A1-2-F01-1无孔位概念，perColumnCount等于fMax
         int perColumnCount =SampleTypeEnums.F.toString().equals(sampleStorageVo.getSampleType()) ? sampleStorageVo.getFMax ():(int)Math.sqrt(perBoxLocationCount);
         // 根据样本类型获取样本保存周期（单位：天）
         int savePeriod = sampleTypeSavePeriodService.getPeriodBySampleType(sampleStorageVo.getSampleType());
@@ -519,7 +511,7 @@ public class SampleStorageController {
         //干血片类型样本：A1-2-F01-1，无孔位概念，perColumnCount等于fMax TODO
         // 最后一个位置是纯数字,不能是A1-2-F01-01
         if(SampleTypeEnums.F.toString().equals(sampleType)){
-            if(!NumberUtil.isWholeNumber(strArray[3])){
+            if(!"0".equals(strArray[3]) && !NumberUtil.isWholeNumber(strArray[3])){
                 return null;
             }
             curLocationNumber = Integer.parseInt(strArray[3]);
@@ -537,7 +529,7 @@ public class SampleStorageController {
                     String location12 = sampleLocation.substring(0, sampleLocation.lastIndexOf("-")+1) + nextLocationNumber;
                     if(isLocationFree(location12)) {
                         return location12;
-                    }else{
+                    }else {
                         return getNextFreeLocation(fridgeNo,levelNo,sampleType,new StringBuilder(location12),perColumnCount);
                     }
 //                }
