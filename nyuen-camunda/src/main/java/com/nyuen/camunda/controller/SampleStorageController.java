@@ -877,6 +877,25 @@ public class SampleStorageController {
         return false;
     }
 
+    @ApiOperation(value = "(批量)修改样本库样本备注", httpMethod = "POST")
+    @PostMapping("/updateSampleStorageRemark")
+    public Result updateSampleStorageRemark(@RequestBody SampleStoreOperateVo sampleStoreOperateVo,HttpServletRequest request){
+        if(StringUtil.isEmpty(sampleStoreOperateVo.getRemark())){
+            return ResultFactory.buildFailResult("备注信息不能为空");
+        }
+        sampleStorageMapper.updateSampleStorageRemark(sampleStoreOperateVo);
+        //添加操作记录
+        SampleStorageOperation sampleStorageOperation = new SampleStorageOperation();
+        sampleStorageOperation.setSampleNum(sampleStoreOperateVo.getSampleNumList().toString());
+        sampleStorageOperation.setOperateType("修改备注");
+        sampleStorageOperation.setOperation("修改为："+sampleStoreOperateVo.getRemark());
+        Result result = addSampleStoreOperation(sampleStorageOperation, request);
+        if (200 != result.getCode()) {
+            return result;
+        }
+        return ResultFactory.buildSuccessResult(null);
+    }
+
     public static void main(String[] args) {
         SampleStorageController ssc = new SampleStorageController();
         String lastSampleLocation = "A1-1-B01-F5";
@@ -893,6 +912,7 @@ public class SampleStorageController {
 
 
     }
+
 
 
 }

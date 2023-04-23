@@ -302,7 +302,8 @@
   <!--样本领出、归还、返样、销毁、作废、移动-->
   <update id="sampleStoreOperate" parameterType="com.nyuen.camunda.domain.vo.SampleStoreOperateVo">
     update sample_storage
-    set sample_storage_state=#{sampleStorageState,jdbcType=INTEGER}
+    set sample_storage_state=#{sampleStorageState,jdbcType=INTEGER},
+        remark=#{remark,jdbcType=VARCHAR}
     where
     <if test="sampleNumList != null">
       sample_num in
@@ -441,6 +442,18 @@
     order by sample_num
   </select>
 
-
+  <!--（批量）修改样本库中的样本备注-->
+  <!--样本领出、归还、返样、销毁、作废、移动-->
+  <update id="updateSampleStorageRemark" parameterType="com.nyuen.camunda.domain.vo.SampleStoreOperateVo">
+    update sample_storage
+    set remark=#{remark,jdbcType=VARCHAR}
+    where
+    <if test="sampleNumList != null">
+      sample_num in
+      <foreach collection="sampleNumList" item="item" separator="," open="(" close=")" index="index">
+        #{item}
+      </foreach>
+    </if>
+  </update>
 
 </mapper>
