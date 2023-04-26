@@ -5,6 +5,7 @@ import com.nyuen.camunda.domain.po.LabFridge;
 import com.nyuen.camunda.domain.po.LabFridgeLevel;
 import com.nyuen.camunda.domain.po.SampleStorage;
 import com.nyuen.camunda.domain.vo.FridgeLevelBoxVo;
+import com.nyuen.camunda.mapper.LabFridgeLevelMapper;
 import com.nyuen.camunda.result.Result;
 import com.nyuen.camunda.result.ResultFactory;
 import com.nyuen.camunda.service.LabFridgeLevelService;
@@ -12,10 +13,7 @@ import com.nyuen.camunda.service.SampleStorageService;
 import com.nyuen.camunda.utils.StringUtil;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
@@ -36,6 +34,8 @@ import java.util.List;
 public class FridgeLevelController {
     @Resource
     private LabFridgeLevelService labFridgeLevelService;
+    @Resource
+    private LabFridgeLevelMapper labFridgeLevelMapper;
 
     // 创建新的层级-盒子
     @ApiOperation(value = "创建新的层级-盒子", httpMethod = "POST")
@@ -98,6 +98,13 @@ public class FridgeLevelController {
             return ResultFactory.buildFailResult("冰箱编号和层级号不能为空!");
         }
         return ResultFactory.buildSuccessResult(labFridgeLevelService.getInfoByFridgeNoAndLevel(labFridgeLevel));
+    }
+
+    //获取冰箱所有层级、样本类型及每个层级的盒子数量
+    @ApiOperation(value = "获取冰箱所有层级、样本类型及每个层级的盒子数量", httpMethod = "GET")
+    @GetMapping("/getFridgeLevelAndBoxCount")
+    public Result getFridgeLevelAndBoxCount(@RequestParam("fridgeNo") String fridgeNo){
+        return ResultFactory.buildSuccessResult(labFridgeLevelMapper.getFridgeLevelAndBoxCount(fridgeNo));
     }
 
 }

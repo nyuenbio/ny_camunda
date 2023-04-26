@@ -214,4 +214,12 @@
     from lab_fridge_level
   </select>
 
+  <!--获取冰箱所有层级、样本类型及每个层级的盒子数量-->
+  <select id="getFridgeLevelAndBoxCount" parameterType="java.lang.String" resultType="com.nyuen.camunda.domain.vo.SampleStorageVo">
+    SELECT fridge_no as fridgeNo,level_no as levelNo,sample_type as sampleType,count(box_no) as boxNum
+    from lab_fridge_level
+    GROUP BY fridge_no,level_no,sample_type
+    HAVING fridge_no=#{fridgeNo,jdbcType=VARCHAR}
+  </select>
+
 </mapper>
