@@ -11,6 +11,8 @@ import com.nyuen.camunda.service.MyTaskService;
 import com.nyuen.camunda.service.SampleLabInfoService;
 import com.nyuen.camunda.service.SampleSiteRuleService;
 import com.nyuen.camunda.utils.ExcelUtil;
+import com.nyuen.camunda.utils.ListUtil;
+import com.nyuen.camunda.utils.StringUtil;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.camunda.bpm.engine.IdentityService;
@@ -48,6 +50,9 @@ public class ZhxVForthController {
     private MyTaskService myTaskService;
     @Resource
     private SampleLabInfoService sampleLabInfoService;
+
+    private static String[] hlaProductList = new String[]{"抗精神病药","心境稳定剂","抗焦虑药/心境稳定剂","抗凝血药和抗血小板药/抗痛风药"};
+    private static String[] hlaMedicineList = new String[]{"氯氮平","左乙拉西坦","卡马西平","奥卡西平","拉莫三嗪","苯妥英","苯巴比妥","别嘌呤"};
 
 
     @ApiOperation(value = "校验样本流程是否已开启",httpMethod = "POST")
@@ -100,6 +105,19 @@ public class ZhxVForthController {
                     variables.put("孔位", holeCodesSet.size());
                     variables.put("对应编码", holeCodes);
                     variables.put("ASSAY编号", assayCodes);
+                    boolean hlaFlag = false;
+                    if("自选药物检测".equals(srBean.getTestType())){
+                        String[] medicines = srBean.getMedicines().split(",");
+                        for (String medicine : medicines){
+                            if(ListUtil.isStrInList(medicine,hlaMedicineList)){
+                                hlaFlag = true;
+                                break;
+                            }
+                        }
+                    }else if(ListUtil.isStrInList(srBean.getProductName(),hlaProductList)){
+                            hlaFlag = true;
+                    }
+                    variables.put("HLA",hlaFlag?"是":"");
                     ProcessInstance pi = runtimeService.startProcessInstanceById(procDefId, srBean.getSampleInfo(), variables);
                     SampleLabInfo sampleLabInfo = new SampleLabInfo();
                     sampleLabInfo.setSampleInfo(srBean.getSampleInfo());
@@ -116,6 +134,7 @@ public class ZhxVForthController {
                     sampleLabInfo.setAssayCode(assayCodes);
                     sampleLabInfo.setCreateTime(new Date());
                     sampleLabInfo.setRemark(cnvState.intValue() == 0 ? "不做CNV":"");
+                    sampleLabInfo.setHlaRemark(hlaFlag?"是":null);
                     sampleLabInfoService.addSampleLanInfo(sampleLabInfo);
                 }else{
                     runtimeService.startProcessInstanceById(procDefId, srBean.getSampleInfo());
@@ -132,7 +151,7 @@ public class ZhxVForthController {
     public void exportSampleSiteInfo(@RequestBody List<String> procInstIdList, HttpServletResponse response) throws Exception {
         List<SampleLabInfo> sampleLabInfoList = sampleLabInfoService.getSampleLabInfoList(procInstIdList);
         // 构建导出excel表头（第一行）
-        String[] excelHeader = {"样本编号", "产品名称", "孔位", "孔位编号", "ASSAY编号","创建时间","备注", "样本类型", "医院名称"};
+        String[] excelHeader = {"样本编号", "产品名称", "孔位", "孔位编号", "ASSAY编号","创建时间","备注", "样本类型", "医院名称","是否做HLA"};
         ExcelUtil.exportExcel(response,excelHeader,sampleLabInfoList,"样本位点信息","样本位点信息");
 
     }
@@ -177,6 +196,19 @@ public class ZhxVForthController {
         String procDefId = batchStartProcessBean.getProcDefId();
         for(SampleReceiveBean srBean : batchStartProcessBean.getSampleReceiveList()) {
             SampleLabInfo sampleLabInfo = sampleLabInfoService.getLastSampleLabInfoBySampleNum(srBean.getSampleInfo());
+            boolean hlaFlag = false;
+            if("自选药物检测".equals(srBean.getTestType())){
+                String[] medicines = srBean.getMedicines().split(",");
+                for (String medicine : medicines){
+                    if(ListUtil.isStrInList(medicine,hlaMedicineList)){
+                        hlaFlag = true;
+                        break;
+                    }
+                }
+            }else if(ListUtil.isStrInList(srBean.getProductName(),hlaProductList)){
+                hlaFlag = true;
+            }
+
             if(null == sampleLabInfo){
                 return ResultFactory.buildFailResult(srBean.getSampleInfo()+"该样本位点信息不存在！");
             }
@@ -195,6 +227,7 @@ public class ZhxVForthController {
                     return m;
                 }).collect(Collectors.toList());
             }
+
             String holeCodes = holeCodesSet.toString().substring(1, holeCodesSet.toString().length() - 1);
             String assayCodes = assayCodesSet.toString().substring(1, assayCodesSet.toString().length() - 1);
             if(!sampleLabInfo.getHoleCode().equals(holeCodes)){
@@ -208,11 +241,13 @@ public class ZhxVForthController {
                 variables.put("孔位", appendHoles.replace(",","").length());
                 variables.put("对应编码", appendHoles);
                 variables.put("ASSAY编号", appendAssayCodes);
+                variables.put("HLA",hlaFlag?"是":"");
                 ProcessInstance pi = runtimeService.startProcessInstanceById(procDefId, srBean.getSampleInfo(), variables);
                 SampleLabInfo sampleLabInfo1 = new SampleLabInfo();
                 sampleLabInfo1.setId(sampleLabInfo.getId());
                 sampleLabInfo1.setProcInstId(pi.getId());// 导出孔位信息时，需根据该字段导出,所以需要更新
                 sampleLabInfo1.setProductName(srBean.getProductName());
+                sampleLabInfo1.setHlaRemark(hlaFlag?"是":null);
                 String appendRemark = sampleLabInfo.getRemark() +"。"+
                         "追加孔位[" + appendHoles + "] " +
                         ",追加套餐[" + appendProduct + "] " +
@@ -254,6 +289,19 @@ public class ZhxVForthController {
                     variables.put("holeCodes", holeCodes);
                     variables.put("assayCodes", assayCodes);
                     variables.put("cnvState",cnvState.intValue() == 0 ? 0:1);//0：不做CNV
+                    boolean hlaFlag = false;
+                    if("自选药物检测".equals(srBean.getTestType())){
+                        String[] medicines = srBean.getMedicines().split(",");
+                        for (String medicine : medicines){
+                            if(ListUtil.isStrInList(medicine,hlaMedicineList)){
+                                hlaFlag = true;
+                                break;
+                            }
+                        }
+                    }else if(ListUtil.isStrInList(srBean.getProductName(),hlaProductList)){
+                        hlaFlag = true;
+                    }
+                    variables.put("hla", hlaFlag?"是":"");
                     resultList.add(variables);
                 }
             }
