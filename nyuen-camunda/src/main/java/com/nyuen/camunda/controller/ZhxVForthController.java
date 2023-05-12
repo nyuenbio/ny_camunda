@@ -105,18 +105,7 @@ public class ZhxVForthController {
                     variables.put("孔位", holeCodesSet.size());
                     variables.put("对应编码", holeCodes);
                     variables.put("ASSAY编号", assayCodes);
-                    boolean hlaFlag = false;
-                    if("自选药物检测".equals(srBean.getTestType())){
-                        String[] medicines = srBean.getMedicines().split(",");
-                        for (String medicine : medicines){
-                            if(ListUtil.isStrInList(medicine,hlaMedicineList)){
-                                hlaFlag = true;
-                                break;
-                            }
-                        }
-                    }else if(ListUtil.isStrInList(srBean.getProductName(),hlaProductList)){
-                            hlaFlag = true;
-                    }
+                    boolean hlaFlag = isHla(srBean);
                     variables.put("HLA",hlaFlag?"是":"");
                     ProcessInstance pi = runtimeService.startProcessInstanceById(procDefId, srBean.getSampleInfo(), variables);
                     SampleLabInfo sampleLabInfo = new SampleLabInfo();
@@ -196,19 +185,7 @@ public class ZhxVForthController {
         String procDefId = batchStartProcessBean.getProcDefId();
         for(SampleReceiveBean srBean : batchStartProcessBean.getSampleReceiveList()) {
             SampleLabInfo sampleLabInfo = sampleLabInfoService.getLastSampleLabInfoBySampleNum(srBean.getSampleInfo());
-            boolean hlaFlag = false;
-            if("自选药物检测".equals(srBean.getTestType())){
-                String[] medicines = srBean.getMedicines().split(",");
-                for (String medicine : medicines){
-                    if(ListUtil.isStrInList(medicine,hlaMedicineList)){
-                        hlaFlag = true;
-                        break;
-                    }
-                }
-            }else if(ListUtil.isStrInList(srBean.getProductName(),hlaProductList)){
-                hlaFlag = true;
-            }
-
+            boolean hlaFlag = isHla(srBean);
             if(null == sampleLabInfo){
                 return ResultFactory.buildFailResult(srBean.getSampleInfo()+"该样本位点信息不存在！");
             }
@@ -289,24 +266,35 @@ public class ZhxVForthController {
                     variables.put("holeCodes", holeCodes);
                     variables.put("assayCodes", assayCodes);
                     variables.put("cnvState",cnvState.intValue() == 0 ? 0:1);//0：不做CNV
-                    boolean hlaFlag = false;
-                    if("自选药物检测".equals(srBean.getTestType())){
-                        String[] medicines = srBean.getMedicines().split(",");
-                        for (String medicine : medicines){
-                            if(ListUtil.isStrInList(medicine,hlaMedicineList)){
-                                hlaFlag = true;
-                                break;
-                            }
-                        }
-                    }else if(ListUtil.isStrInList(srBean.getProductName(),hlaProductList)){
-                        hlaFlag = true;
-                    }
+                    boolean hlaFlag = isHla(srBean);
                     variables.put("hla", hlaFlag?"是":"");
                     resultList.add(variables);
                 }
             }
         }
         return ResultFactory.buildSuccessResult(resultList);
+    }
+
+    private boolean isHla(SampleReceiveBean srBean){
+        boolean hlaFlag = false;
+        if("自选药物检测".equals(srBean.getTestType())){
+            String[] medicines = srBean.getMedicines().split(",");
+            for (String medicine : medicines){
+                if(ListUtil.isStrInList(medicine,hlaMedicineList)){
+                    hlaFlag = true;
+                    break;
+                }
+            }
+        }else {
+            String[] productNames = srBean.getProductName().split(",");
+            for(String productName : productNames) {
+                if (ListUtil.isStrInList(productName, hlaProductList)) {
+                    hlaFlag = true;
+                    break;
+                }
+            }
+        }
+        return hlaFlag;
     }
 
     public static void main(String[] args) {
