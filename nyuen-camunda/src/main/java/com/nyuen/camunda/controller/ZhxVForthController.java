@@ -51,7 +51,7 @@ public class ZhxVForthController {
     @Resource
     private SampleLabInfoService sampleLabInfoService;
 
-    private static String[] hlaProductList = new String[]{"抗精神病药","心境稳定剂","抗焦虑药/心境稳定剂","抗凝血药和抗血小板药/抗痛风药"};
+    private static String[] hlaProductList = new String[]{"抗精神病药","心境稳定剂","抗焦虑药/心境稳定剂","抗凝血药和抗血小板药/抗痛风药","抗癫痫药物分析"};
     private static String[] hlaMedicineList = new String[]{"氯氮平","左乙拉西坦","卡马西平","奥卡西平","拉莫三嗪","苯妥英","苯巴比妥","别嘌呤"};
 
 
