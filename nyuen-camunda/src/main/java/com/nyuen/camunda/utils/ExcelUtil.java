@@ -68,7 +68,9 @@ public class ExcelUtil {
                 // 又一个小细节  ==> firstCellIndex+1 第一列是样本编号
                 for (int cIndex = firstCellIndex+1 ; cIndex < lastCellIndex; cIndex++) {   //遍历列
                     Cell cell = row.getCell(cIndex);
-                    if (cell != null) {
+                    if( null == cell) {
+                        rowCellList.add("");
+                    } else {
                         //System.out.println(cell.toString());
                         cell.setCellType(CellType.STRING);
                         rowCellList.add(cell.toString().trim());

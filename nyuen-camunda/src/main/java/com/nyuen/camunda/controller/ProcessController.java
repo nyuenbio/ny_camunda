@@ -427,7 +427,11 @@ public class ProcessController {
                 sampleHoleNumErr.insert(0,entry.getKey().toString());
                 holeNumErr.append(sampleHoleNumErr);
             }
-            List<NyuenResultCheck> errorList = nyuenResultCheckMapper.getCallResultErrorBySampleNums(groupResultCheckList);
+            // todo
+            Set<String> sampleNumSet = groupMap.keySet();
+            List<String> noDumpSampleNumList = new ArrayList<>();
+            noDumpSampleNumList.addAll(sampleNumSet);
+            List<NyuenResultCheck> errorList = nyuenResultCheckMapper.getCallResultErrorBySampleNums(noDumpSampleNumList);
 
             if(null != errorList && errorList.size()>0){
                 for(NyuenResultCheck resultCheck : errorList){
