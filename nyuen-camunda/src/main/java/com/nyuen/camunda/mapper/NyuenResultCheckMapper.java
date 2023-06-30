@@ -67,7 +67,7 @@ public interface NyuenResultCheckMapper {
 
     List<NyuenResultCheck> getSnpInfoBySampleNums(List<SampleRowAndCell> list);
 
-    List<NyuenResultCheck> getCallResultErrorBySampleNums(List<String> noDumpSampleNumList);
+    List<NyuenResultCheck> getCallResultErrorBySampleNums(List<SampleRowAndCell> sampleRowAndCellList);
 
     List<NyuenResultCheck> getNyuenResultCheckByCondition(Map<String,Object> params);
 

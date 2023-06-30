@@ -259,7 +259,7 @@ public class ProcessController {
         List<String> descriptionErr = new ArrayList<>();
         StringBuilder holeNumErr = new StringBuilder();
         StringBuilder callResultErr = new StringBuilder();
-        List<String> callResultErrSamples = new ArrayList<>();
+        Set<String> callResultErrSamples = new HashSet<>();
         List<ExperimentalDataRowNew> experimentalDataRowList = new ArrayList<>();
         // 避免再次上传时重复数据 todo
         // （1）根据样本编号批量删除nyuenResultCheck表
@@ -305,7 +305,10 @@ public class ProcessController {
             map.put("Authorization",request.getHeader("Authorization"));
             String result = HttpClientUtil.httpPostJson(operationLogService, JSON.parseObject(JSONObject.toJSONString(map)));
             JSONObject jsonObject = JSON.parseObject(result);
-            if(!"200".equals(jsonObject.get("code").toString())){
+            if(null != jsonObject.get("code") && !"200".equals(jsonObject.get("code").toString())){
+                return ResultFactory.buildFailResult(jsonObject.get("message").toString());
+            }
+            if(null != jsonObject.get("status") && "500".equals(jsonObject.get("status").toString())){
                 return ResultFactory.buildFailResult(jsonObject.get("message").toString());
             }
         }
@@ -334,7 +337,7 @@ public class ProcessController {
     }
 
     private void checkHoleNumAndCallResult(List<SampleRowAndCell> sampleRowAndCellList, StringBuilder holeNumErr,
-                                           List<String> callResultErrSamples,StringBuilder callResultErr ){
+                                           Set<String> callResultErrSamples,StringBuilder callResultErr ){
         List<NyuenResultCheck> nyuenResultCheckList = nyuenResultCheckMapper.getSnpInfoBySampleNums(sampleRowAndCellList);
         Map<String,List<NyuenResultCheck>> groupMap = new HashMap<>();
         //将结果集按样本编号分组
@@ -427,22 +430,17 @@ public class ProcessController {
                 sampleHoleNumErr.insert(0,entry.getKey().toString());
                 holeNumErr.append(sampleHoleNumErr);
             }
-            // todo
-            Set<String> sampleNumSet = groupMap.keySet();
-            List<String> noDumpSampleNumList = new ArrayList<>();
-            noDumpSampleNumList.addAll(sampleNumSet);
-            List<NyuenResultCheck> errorList = nyuenResultCheckMapper.getCallResultErrorBySampleNums(noDumpSampleNumList);
-
-            if(null != errorList && errorList.size()>0){
-                for(NyuenResultCheck resultCheck : errorList){
-                    String[] callResults = resultCheck.getCallResult().split(",");
-                    LinkedHashSet unDumpCall = new LinkedHashSet();
-                    unDumpCall.addAll(Arrays.asList(callResults));
-                    if(unDumpCall.size()>1) {
-                        callResultErrSamples.add(resultCheck.getSampleInfo());
-                        callResultErr.append("样本 ").append(resultCheck.getSampleInfo()).append(" AssayId为 ").append(resultCheck.getAssayId())
-                                .append(" 存在多种检测结果： ").append(resultCheck.getCallResult()).append(" 。");
-                    }
+        }
+        List<NyuenResultCheck> errorList = nyuenResultCheckMapper.getCallResultErrorBySampleNums(sampleRowAndCellList);
+        if(null != errorList && errorList.size()>0){
+            for(NyuenResultCheck resultCheck : errorList){
+                String[] callResults = resultCheck.getCallResult().split(",");
+                LinkedHashSet unDumpCall = new LinkedHashSet();
+                unDumpCall.addAll(Arrays.asList(callResults));
+                if(unDumpCall.size()>1) {
+                    callResultErrSamples.add(resultCheck.getSampleInfo());
+                    callResultErr.append("样本 ").append(resultCheck.getSampleInfo()).append(" AssayId为 ").append(resultCheck.getAssayId())
+                            .append(" 存在多种检测结果： ").append(resultCheck.getCallResult()).append(" 。");
                 }
             }
         }
