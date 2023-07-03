@@ -51,8 +51,9 @@ public class ZhxVForthController {
     @Resource
     private SampleLabInfoService sampleLabInfoService;
 
-    private static String[] hlaProductList = new String[]{"抗精神病药","心境稳定剂","抗焦虑药/心境稳定剂","抗凝血药和抗血小板药/抗痛风药","抗癫痫药物分析"};
-    private static String[] hlaMedicineList = new String[]{"氯氮平","左乙拉西坦","卡马西平","奥卡西平","拉莫三嗪","苯妥英","苯巴比妥","别嘌呤"};
+    // 2023-07-01需求： 去掉H孔位及HLA提示
+    //private static String[] hlaProductList = new String[]{"抗精神病药","心境稳定剂","抗焦虑药/心境稳定剂","抗凝血药和抗血小板药/抗痛风药","抗癫痫药物分析"};
+    //private static String[] hlaMedicineList = new String[]{"氯氮平","左乙拉西坦","卡马西平","奥卡西平","拉莫三嗪","苯妥英","苯巴比妥","别嘌呤"};
 
 
     @ApiOperation(value = "校验样本流程是否已开启",httpMethod = "POST")
@@ -105,8 +106,8 @@ public class ZhxVForthController {
                     variables.put("孔位", holeCodesSet.size());
                     variables.put("对应编码", holeCodes);
                     variables.put("ASSAY编号", assayCodes);
-                    boolean hlaFlag = isHla(srBean);
-                    variables.put("HLA",hlaFlag?"是":"");
+                    //boolean hlaFlag = isHla(srBean);
+                    //variables.put("HLA",hlaFlag?"是":"");
                     ProcessInstance pi = runtimeService.startProcessInstanceById(procDefId, srBean.getSampleInfo(), variables);
                     SampleLabInfo sampleLabInfo = new SampleLabInfo();
                     sampleLabInfo.setSampleInfo(srBean.getSampleInfo());
@@ -123,7 +124,7 @@ public class ZhxVForthController {
                     sampleLabInfo.setAssayCode(assayCodes);
                     sampleLabInfo.setCreateTime(new Date());
                     sampleLabInfo.setRemark(cnvState.intValue() == 0 ? "不做CNV":"");
-                    sampleLabInfo.setHlaRemark(hlaFlag?"是":null);
+                    //sampleLabInfo.setHlaRemark(hlaFlag?"是":null);
                     sampleLabInfoService.addSampleLanInfo(sampleLabInfo);
                 }else{
                     runtimeService.startProcessInstanceById(procDefId, srBean.getSampleInfo());
@@ -140,7 +141,7 @@ public class ZhxVForthController {
     public void exportSampleSiteInfo(@RequestBody List<String> procInstIdList, HttpServletResponse response) throws Exception {
         List<SampleLabInfo> sampleLabInfoList = sampleLabInfoService.getSampleLabInfoList(procInstIdList);
         // 构建导出excel表头（第一行）
-        String[] excelHeader = {"样本编号", "产品名称", "孔位", "孔位编号", "ASSAY编号","创建时间","备注", "样本类型", "医院名称","是否做HLA"};
+        String[] excelHeader = {"样本编号", "产品名称", "孔位", "孔位编号", "ASSAY编号","创建时间","备注", "样本类型", "医院名称"};
         ExcelUtil.exportExcel(response,excelHeader,sampleLabInfoList,"样本位点信息","样本位点信息");
 
     }
@@ -185,7 +186,7 @@ public class ZhxVForthController {
         String procDefId = batchStartProcessBean.getProcDefId();
         for(SampleReceiveBean srBean : batchStartProcessBean.getSampleReceiveList()) {
             SampleLabInfo sampleLabInfo = sampleLabInfoService.getLastSampleLabInfoBySampleNum(srBean.getSampleInfo());
-            boolean hlaFlag = isHla(srBean);
+            //boolean hlaFlag = isHla(srBean);
             if(null == sampleLabInfo){
                 return ResultFactory.buildFailResult(srBean.getSampleInfo()+"该样本位点信息不存在！");
             }
@@ -218,13 +219,13 @@ public class ZhxVForthController {
                 variables.put("孔位", appendHoles.replace(",","").length());
                 variables.put("对应编码", appendHoles);
                 variables.put("ASSAY编号", appendAssayCodes);
-                variables.put("HLA",hlaFlag?"是":"");
+                //variables.put("HLA",hlaFlag?"是":"");
                 ProcessInstance pi = runtimeService.startProcessInstanceById(procDefId, srBean.getSampleInfo(), variables);
                 SampleLabInfo sampleLabInfo1 = new SampleLabInfo();
                 sampleLabInfo1.setId(sampleLabInfo.getId());
                 sampleLabInfo1.setProcInstId(pi.getId());// 导出孔位信息时，需根据该字段导出,所以需要更新
                 sampleLabInfo1.setProductName(srBean.getProductName());
-                sampleLabInfo1.setHlaRemark(hlaFlag?"是":null);
+                //sampleLabInfo1.setHlaRemark(hlaFlag?"是":null);
                 String appendRemark = sampleLabInfo.getRemark() +"。"+
                         "追加孔位[" + appendHoles + "] " +
                         ",追加套餐[" + appendProduct + "] " +
@@ -266,8 +267,8 @@ public class ZhxVForthController {
                     variables.put("holeCodes", holeCodes);
                     variables.put("assayCodes", assayCodes);
                     variables.put("cnvState",cnvState.intValue() == 0 ? 0:1);//0：不做CNV
-                    boolean hlaFlag = isHla(srBean);
-                    variables.put("hla", hlaFlag?"是":"");
+                    //boolean hlaFlag = isHla(srBean);
+                    //variables.put("hla", hlaFlag?"是":"");
                     resultList.add(variables);
                 }
             }
@@ -275,7 +276,7 @@ public class ZhxVForthController {
         return ResultFactory.buildSuccessResult(resultList);
     }
 
-    private boolean isHla(SampleReceiveBean srBean){
+    /*private boolean isHla(SampleReceiveBean srBean){
         boolean hlaFlag = false;
         if("自选药物检测".equals(srBean.getTestType())){
             String[] medicines = srBean.getMedicines().split(",");
@@ -295,7 +296,7 @@ public class ZhxVForthController {
             }
         }
         return hlaFlag;
-    }
+    }*/
 
     public static void main(String[] args) {
         SampleReceiveBean srBean = new SampleReceiveBean();

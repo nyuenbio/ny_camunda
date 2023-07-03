@@ -247,9 +247,9 @@ public class ExcelUtil {
             org.apache.poi.ss.usermodel.Cell cell8 = row.createCell(8);
             cell8.setCellValue(content.get(i).getHospitalName());
             cell8.setCellStyle(contentStyle(wb));
-            org.apache.poi.ss.usermodel.Cell cell9 = row.createCell(9);
-            cell9.setCellValue(content.get(i).getHlaRemark());
-            cell9.setCellStyle(contentStyle(wb));
+//            org.apache.poi.ss.usermodel.Cell cell9 = row.createCell(9);
+//            cell9.setCellValue(content.get(i).getHlaRemark());
+//            cell9.setCellStyle(contentStyle(wb));
         }
 //        if (request.getHeader("User-Agent").toLowerCase().indexOf("firefox") > 0) {
 //            title = new String(title.getBytes("UTF-8"), "ISO8859-1"); // firefox浏览器

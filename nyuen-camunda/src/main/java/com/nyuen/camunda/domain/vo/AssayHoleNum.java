@@ -1,13 +1,13 @@
 package com.nyuen.camunda.domain.vo;
 
 public enum AssayHoleNum {
-    A(29),
-    B(22),
+    A(20),
+    B(20),
     C(29),
-    D(27),
+    D(26),
     E(30),
     F(25),
-    G(25),
+    G(23),
     CNV(1);
 
 
