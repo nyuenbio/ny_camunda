@@ -167,13 +167,20 @@ public class ZhxVForthController {
                     return m;
                 }).collect(Collectors.toList());
 
+                if (StringUtil.isNotEmpty(sampleLabInfo.getRemark()) && sampleLabInfo.getRemark().contains("不做CNV")) {
+                    for (SampleSiteRule ssr : sampleSiteRuleList) {
+                        if (1 == ssr.getState()) {
+                            result.append("样本").append(sampleLabInfo.getSampleInfo()).append("追加做CNV。");
+                            break;
+                        }
+                    }
+                }
             }
             String holeCodes = holeCodesSet.toString().substring(1, holeCodesSet.toString().length() - 1);
             if(!sampleLabInfo.getHoleCode().equals(holeCodes)){
                 result.append("样本").append(sampleLabInfo.getSampleInfo()).append("原套餐位点为（").append(sampleLabInfo.getProductName()).append("#").append(sampleLabInfo.getHoleCode()).append(")")
                         .append("，现追加套餐位点为（").append(srBean.getProductName()).append("#").append(holeCodes).append("。");
             }
-
         }
         return ResultFactory.buildResult(200, result.length()>0?result.toString():"孔位无变化","");
     }
@@ -196,6 +203,7 @@ public class ZhxVForthController {
             List<SampleSiteRule> sampleSiteRuleList = sampleSiteRuleService.getHoleAndAssayByProductName(Arrays.asList(srBean.getProductName().split(",")));
             LinkedHashSet<String> holeCodesSet = new LinkedHashSet<>();
             LinkedHashSet<String> assayCodesSet = new LinkedHashSet<>();
+            boolean cnvAppendFlag = false;
             if(sampleSiteRuleList != null && sampleSiteRuleList.size()>0) {
                 List<SampleSiteRule> resultList = sampleSiteRuleList.stream().map(m -> {
                     List<String> hole = Arrays.asList(m.getHoleCode().split(","));
@@ -204,11 +212,19 @@ public class ZhxVForthController {
                     assayCodesSet.addAll(assay);
                     return m;
                 }).collect(Collectors.toList());
+                if (StringUtil.isNotEmpty(sampleLabInfo.getRemark()) && sampleLabInfo.getRemark().contains("不做CNV")) {
+                    for (SampleSiteRule ssr : sampleSiteRuleList) {
+                        if (1 == ssr.getState()) {
+                            cnvAppendFlag = true;
+                            break;
+                        }
+                    }
+                }
             }
 
             String holeCodes = holeCodesSet.toString().substring(1, holeCodesSet.toString().length() - 1);
             String assayCodes = assayCodesSet.toString().substring(1, assayCodesSet.toString().length() - 1);
-            if(!sampleLabInfo.getHoleCode().equals(holeCodes)){
+            if(cnvAppendFlag || !sampleLabInfo.getHoleCode().equals(holeCodes)){
                 String appendHoles = holeCodes.replace(sampleLabInfo.getHoleCode(),"");
                 String appendProduct = srBean.getProductName().replace(sampleLabInfo.getProductName(),"");
                 String appendAssayCodes = assayCodes.replace(sampleLabInfo.getAssayCode(),"");
@@ -219,7 +235,7 @@ public class ZhxVForthController {
                 variables.put("孔位", appendHoles.replace(",","").length());
                 variables.put("对应编码", appendHoles);
                 variables.put("ASSAY编号", appendAssayCodes);
-                //variables.put("HLA",hlaFlag?"是":"");
+                variables.put("CNV",cnvAppendFlag?"是":"");
                 ProcessInstance pi = runtimeService.startProcessInstanceById(procDefId, srBean.getSampleInfo(), variables);
                 SampleLabInfo sampleLabInfo1 = new SampleLabInfo();
                 sampleLabInfo1.setId(sampleLabInfo.getId());
@@ -228,6 +244,7 @@ public class ZhxVForthController {
                 //sampleLabInfo1.setHlaRemark(hlaFlag?"是":null);
                 String appendRemark = sampleLabInfo.getRemark() +"。"+
                         "追加孔位[" + appendHoles + "] " +
+                        (cnvAppendFlag?",追加做CNV":"")+
                         ",追加套餐[" + appendProduct + "] " +
                         ",追加发起人[" + initiator + "] " +
                         ",原procInstId [" + sampleLabInfo.getProcInstId() + "] ";

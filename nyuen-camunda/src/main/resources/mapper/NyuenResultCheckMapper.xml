@@ -239,6 +239,7 @@
         and DATE_FORMAT(create_time, '%Y-%m-%d %H:%i:%S') &lt;= DATE_FORMAT(#{createTimeEnd}, '%Y-%m-%d %H:%i:%S')
       </if>
     </where>
+    order by create_time desc
     limit #{startIndex},#{pageSize}
   </select>
   <select id="getNyuenResultCheckCountByCondition" parameterType="java.util.HashMap" resultType="java.lang.Integer">
