@@ -460,7 +460,7 @@ public class ProcessController {
             params.put("procDefId",procDefId);
             params.put("nodeName",nodeName);
             List<TodoTask> todoTaskList = myTaskService.getTodoTaskByCondition(params);
-            if(todoTaskList.size() == 0){
+            if(null == todoTaskList || todoTaskList.size() == 0){
                 sb.append(sampleRowAndCell.getSampleInfo()).append(" , ");
             }
 //            else if(todoTaskList.size() > 1){
