@@ -1,5 +1,7 @@
 package com.nyuen.camunda.domain.vo;
 
+import lombok.Data;
+
 /**
  * TODO
  *
@@ -7,5 +9,15 @@ package com.nyuen.camunda.domain.vo;
  * @description
  * @date 2023/2/27
  */
+@Data
 public class UserConvertVo {
+    private long loginUserId;
+    private String loginUserIdStr;
+    private String loginUserName;
+
+    public UserConvertVo(long loginUserId,String loginUserIdStr,String loginUserName){
+        this.loginUserId=loginUserId;
+        this.loginUserIdStr=loginUserIdStr;
+        this.loginUserName=loginUserName;
+    }
 }
