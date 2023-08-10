@@ -462,15 +462,51 @@ public class ProcessController {
             List<TodoTask> todoTaskList = myTaskService.getTodoTaskByCondition(params);
             if(todoTaskList.size() == 0){
                 sb.append(sampleRowAndCell.getSampleInfo()).append(" , ");
+            }
+//            else if(todoTaskList.size() > 1){
+//                return ResultFactory.buildFailResult("样本 "+sampleRowAndCell.getSampleInfo()+" 存在两条待办流程，无法匹配！");
+//            }
+            else {
+                for(TodoTask todoTask : todoTaskList) {
+                    String taskId = todoTask.getId();
+                    // 添加流程变量
+                    Map<String, Object> variables = new HashMap<>();
+                    //variables.put("节点名称", nodeName);
+                    //variables.put("样本编号", sampleRowAndCell.getSampleInfo());
+                    variables.put(nodeName + "表格数据", JSON.toJSON(sampleRowAndCell.getSampleRowList()));
+                    taskService.setVariablesLocal(taskId, variables);
+                    taskService.complete(taskId);
+                }
+            }
+        }
+        return ResultFactory.buildResult(200,"".equals(sb.toString().trim()) ? "全部处理完成" : sb.toString()+"以上样本匹配失败,原因：您的待办节点中无此样本",null);
+    }
+
+    //@PostMapping("/myBatchDeal")
+    public Result myBatchDeal(@RequestBody MyBatchDealVo myBatchDealVo){
+        StringBuilder sb = new StringBuilder();
+        for(String sampleNum : myBatchDealVo.getSampleNumList()){
+            //添加审批人
+            if(StringUtils.isNotEmpty(myBatchDealVo.getAssignee())) {
+                identityService.setAuthenticatedUserId(myBatchDealVo.getAssignee());
+            }
+            // 根据样本编号（businessKey)、procDefId、nodeName和assignee找到taskId
+            Map<String,Object> params = new HashMap<>();
+            params.put("assignee",myBatchDealVo.getAssignee());
+            params.put("sampleInfo", sampleNum);
+            params.put("procDefId",myBatchDealVo.getProcDefId());
+            params.put("nodeName",myBatchDealVo.getNodeName());
+            List<TodoTask> todoTaskList = myTaskService.getTodoTaskByCondition(params);
+            if(todoTaskList.size() == 0){
+                sb.append(sampleNum).append(" , ");
             }else if(todoTaskList.size() > 1){
-                return ResultFactory.buildFailResult("样本 "+sampleRowAndCell.getSampleInfo()+" 存在两条待办流程，无法匹配！");
+                return ResultFactory.buildFailResult("样本 "+sampleNum+" 存在两条待办流程，无法匹配！");
             }else {
                 String taskId = todoTaskList.get(0).getId();
                 // 添加流程变量
                 Map<String, Object> variables = new HashMap<>();
-                //variables.put("节点名称", nodeName);
-                //variables.put("样本编号", sampleRowAndCell.getSampleInfo());
-                variables.put(nodeName+"表格数据", JSON.toJSON(sampleRowAndCell.getSampleRowList()));
+                variables.put("nodeName", myBatchDealVo.getNodeName());
+                variables.put("remark","2023-08-10手动批量处理流程："+sampleNum);
                 taskService.setVariablesLocal(taskId, variables);
                 taskService.complete(taskId);
             }
