@@ -482,7 +482,7 @@ public class ProcessController {
         return ResultFactory.buildResult(200,"".equals(sb.toString().trim()) ? "全部处理完成" : sb.toString()+"以上样本匹配失败,原因：您的待办节点中无此样本",null);
     }
 
-    //@PostMapping("/myBatchDeal")
+    //@PostMapping("/myBatchDeal") 2023-08-10手动批量处理流程
     public Result myBatchDeal(@RequestBody MyBatchDealVo myBatchDealVo){
         StringBuilder sb = new StringBuilder();
         for(String sampleNum : myBatchDealVo.getSampleNumList()){
@@ -509,6 +509,40 @@ public class ProcessController {
                 variables.put("remark","2023-08-10手动批量处理流程："+sampleNum);
                 taskService.setVariablesLocal(taskId, variables);
                 taskService.complete(taskId);
+            }
+        }
+        return ResultFactory.buildResult(200,"".equals(sb.toString().trim()) ? "全部处理完成" : sb.toString()+"以上样本匹配失败,原因：您的待办节点中无此样本",null);
+    }
+
+    @ApiOperation(value = "批量处理‘数据确认’节点（或其他无变量节点）", httpMethod = "POST")
+    @PostMapping("/batchDealWithNoVariables")
+    public Result batchDealWithNoVariables(@RequestBody MyBatchDealVo myBatchDealVo){
+        StringBuilder sb = new StringBuilder();
+        for(String sampleNum : myBatchDealVo.getSampleNumList()){
+            //添加审批人
+            if(StringUtils.isNotEmpty(myBatchDealVo.getAssignee())) {
+                identityService.setAuthenticatedUserId(myBatchDealVo.getAssignee());
+            }
+            // 根据样本编号（businessKey)、procDefId、nodeName和assignee找到taskId
+            Map<String,Object> params = new HashMap<>();
+            params.put("assignee",myBatchDealVo.getAssignee());
+            params.put("sampleInfo", sampleNum);
+            params.put("procDefId",myBatchDealVo.getProcDefId());
+            params.put("nodeName",myBatchDealVo.getNodeName());
+            List<TodoTask> todoTaskList = myTaskService.getTodoTaskByCondition(params);
+            if(todoTaskList.size() == 0){
+                sb.append(sampleNum).append(" , ");
+            }else {
+                // 存在两条以上待办流程，一起处理
+                for(TodoTask todoTask : todoTaskList) {
+                    String taskId = todoTask.getId();
+                    // 添加流程变量
+                    Map<String, Object> variables = new HashMap<>();
+                    variables.put("nodeName", myBatchDealVo.getNodeName());
+                    variables.put("remark", sampleNum);
+                    taskService.setVariablesLocal(taskId, variables);
+                    taskService.complete(taskId);
+                }
             }
         }
         return ResultFactory.buildResult(200,"".equals(sb.toString().trim()) ? "全部处理完成" : sb.toString()+"以上样本匹配失败,原因：您的待办节点中无此样本",null);
