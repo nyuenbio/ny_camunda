@@ -34,4 +34,9 @@ public class ExperimentDataServiceImpl implements ExperimentDataService {
         int total = experimentDataMapper.getExperimentDataCount(params);
         return new PageBean(total,experimentDataList);
     }
+
+    @Override
+    public void updateExperimentData(ExperimentData experimentData) {
+        experimentDataMapper.updateByPrimaryKeySelective(experimentData);
+    }
 }

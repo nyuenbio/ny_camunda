@@ -18,4 +18,6 @@ public interface ExperimentDataService {
 
     PageBean getExperimentDataList(Map<String,Object> params);
 
+    void updateExperimentData(ExperimentData experimentData);
+
 }

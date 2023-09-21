@@ -123,6 +123,7 @@ public class ProcessController {
         experimentData.setUrl(fileReadPath);
         experimentData.setCreateUser(assignee);
         experimentData.setCreateTime(new Date());
+        experimentData.setStatus(0+"");
         experimentDataService.addExperimentData(experimentData);
         //}
         // 3、处理流程节点
@@ -623,6 +624,16 @@ public class ProcessController {
         return ResultFactory.buildSuccessResult(pageBean);
     }
 
+    @ApiOperation(value = "更新下机数据文件状态",httpMethod = "POST")
+    @PostMapping("/updateExperimentDataStatus")
+    public Result updateExperimentDataStatus(@RequestBody int id)  {
+        ExperimentData experimentData = new ExperimentData();
+        experimentData.setId(id);
+        experimentData.setStatus(1+"");
+        experimentDataService.updateExperimentData(experimentData);
+        return ResultFactory.buildSuccessResult(null);
+    }
+
     public static void main(String[] args) {
         List<ExperimentalDataRow> experimentalDataRowList = new ArrayList<>();
         ExperimentalDataRow dataRow = new ExperimentalDataRow();
@@ -665,10 +676,9 @@ public class ProcessController {
         String[] callResults = ("CT,CT,AG").split(",");
         LinkedHashSet unDumpCall = new LinkedHashSet();
         unDumpCall.addAll(Arrays.asList(callResults));
-        Iterator it = unDumpCall.iterator();
-        while (it.hasNext()){
+        for (Object o : unDumpCall) {
 
-            System.out.println(it.next());
+            System.out.println(o);
         }
 
     }
