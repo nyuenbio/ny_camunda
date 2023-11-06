@@ -72,7 +72,7 @@
     </appender>
 
     <logger name="com.nyuen.camunda.mapper" level="DEBUG" />
-    <root level="INFO">
+    <root level="DEBUG">
         <appender-ref ref="console" />
         <appender-ref ref="file-debug" />
         <appender-ref ref="file-info" />
