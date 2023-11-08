@@ -64,6 +64,7 @@ public interface NyuenResultCheckMapper {
     void delResultBySampleInfo(List<SampleRowAndCell> list);
 
     void updateSnpInfo(List<SampleRowAndCell> list);
+    void updateSnpInfoV5(List<SampleRowAndCell> list);
 
     List<NyuenResultCheck> getSnpInfoBySampleNums(List<SampleRowAndCell> list);
 

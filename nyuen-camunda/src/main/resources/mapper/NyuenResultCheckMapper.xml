@@ -197,6 +197,15 @@
       #{item.sampleInfo}
     </foreach>
   </update>
+  <update id="updateSnpInfoV5" parameterType="com.nyuen.camunda.domain.vo.SampleRowAndCell">
+    update nyuen_result_check a,nyuen_id_v b
+    set a.snp = b.snp
+    where b.nyuen_id=a.assay_id
+    and sample_info in
+    <foreach collection="list" item="item" open="(" close=")" index="index" separator=",">
+      #{item.sampleInfo}
+    </foreach>
+  </update>
   <select id="getSnpInfoBySampleNums" parameterType="com.nyuen.camunda.domain.vo.SampleRowAndCell" resultMap="BaseResultMap">
     select <include refid="Base_Column_List"></include>
     from nyuen_result_check

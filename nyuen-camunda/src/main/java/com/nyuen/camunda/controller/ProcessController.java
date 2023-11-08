@@ -6,6 +6,7 @@ import com.nyuen.camunda.common.PageBean;
 import com.nyuen.camunda.domain.po.ExperimentData;
 import com.nyuen.camunda.domain.po.NyuenResultCheck;
 import com.nyuen.camunda.domain.vo.*;
+import com.nyuen.camunda.mapper.NyuenIdVMapper;
 import com.nyuen.camunda.mapper.NyuenResultCheckMapper;
 import com.nyuen.camunda.result.Result;
 import com.nyuen.camunda.result.ResultFactory;
@@ -15,6 +16,7 @@ import com.nyuen.camunda.utils.*;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.NameValuePair;
 import org.apache.http.message.BasicNameValuePair;
@@ -53,6 +55,8 @@ public class ProcessController {
     private ExperimentDataService experimentDataService;
     @Resource
     private NyuenResultCheckMapper nyuenResultCheckMapper;
+    @Resource
+    private NyuenIdVMapper nyuenIdVMapper;
 
     @Value("${file.saveRootPath}")
     private String saveRootPath;
@@ -109,7 +113,7 @@ public class ProcessController {
         // 得到相同样本编号归类后的Excel表格数据
         List<SampleRowAndCell> sampleRowAndCellList = (List<SampleRowAndCell>) result1.getData();
         // 1、校验表格 V4版本规则
-        Result checkResult = experimentDataCheckV42(sampleRowAndCellList, nodeName, assignee, multipartFile.getOriginalFilename(),request);
+        Result checkResult = experimentDataCheckV5(sampleRowAndCellList, nodeName, assignee, multipartFile.getOriginalFilename(),request);
         if(StringUtils.isNotEmpty(checkResult.getMessage())){
             return checkResult;
         }
@@ -251,11 +255,11 @@ public class ProcessController {
             return ResultFactory.buildResult(200,"",null);
         }
         List<String> descriptionArray = Collections.singletonList("D.LOW Probability");
-        // 校验规则
-        // 2.Methodology-CNV的位点，固定是rs16947(可能会因为下拉导致错误)
-        // 4.Description这一列评级不能出现D.LOW Probability
-        // 5.同一样本，同一rs号，如果call不同，需记录并报错
-        // 6.需根据套餐校验位点数，A:29,B:20,C:29,D:27,E:30,F:25,G:25,CNV:1
+        // 校验规则V4-2
+        // 1.Methodology-CNV的位点，固定是rs16947(可能会因为下拉导致错误)
+        // 2.Description这一列评级不能出现D.LOW Probability
+        // 3.同一样本，同一rs号，如果call不同，需记录并报错
+        // 4.需校验位点数，A:20,B:20,C:29,D:26,E:30,F:25,G:23,CNV:1
         List<String> cnvErr = new ArrayList<>();
         List<String> descriptionErr = new ArrayList<>();
         StringBuilder holeNumErr = new StringBuilder();
@@ -445,6 +449,152 @@ public class ProcessController {
                 }
             }
         }
+    }
+
+    private Result experimentDataCheckV5(List<SampleRowAndCell> sampleRowAndCellList,String nodeName,String assignee, String fileName,HttpServletRequest request) {
+        if (!StringUtils.equalsIgnoreCase(nodeName.trim(), "下机")) {
+            return ResultFactory.buildResult(200, "", null);
+        }
+        List<String> descriptionArray = Collections.singletonList("D.LOW Probability");
+        // v5校验规则
+        // 1.Methodology-CNV的位点，固定是rs16947(可能会因为下拉导致错误)
+        // 2.非Hxx编号的位点，Description这一列评级不能出现D.LOW Probability
+        // 3.同一样本，同一rs号，如果call不同，需记录并报错
+        // 4.需校验位点数，与nyuen_id完全对应，即w1-w12共332个位点
+        List<String> cnvErr = new ArrayList<>();
+        List<String> descriptionErr = new ArrayList<>();
+        StringBuilder holeNumErr = new StringBuilder();
+        StringBuilder callResultErr = new StringBuilder();
+        Set<String> callResultErrSamples = new HashSet<>();
+        List<ExperimentalDataRowNew> experimentalDataRowList = new ArrayList<>();
+        // 避免再次上传时重复数据 todo
+        // （1）根据样本编号批量删除nyuenResultCheck表
+        nyuenResultCheckMapper.delResultBySampleInfo(sampleRowAndCellList);
+        for(SampleRowAndCell sampleRowAndCell: sampleRowAndCellList){
+            List<List<String>> sampleRowList = sampleRowAndCell.getSampleRowList();
+            for(List<String> rowList : sampleRowList){
+                ExperimentalDataRowNew dataRowNew = new ExperimentalDataRowNew();
+                dataRowNew.setSampleNum(sampleRowAndCell.getSampleInfo());
+                dataRowNew.setCallResult(rowList.get(0));
+                dataRowNew.setAssayId(rowList.get(1));
+                dataRowNew.setWellPosition(rowList.get(2));
+                dataRowNew.setDescription(rowList.get(3));
+                dataRowNew.setGeneHap(rowList.get(4));
+                dataRowNew.setMethodology(rowList.get(5));
+                experimentalDataRowList.add(dataRowNew);
+                NyuenResultCheck resultCheck = new NyuenResultCheck();
+                resultCheck.setSampleInfo(sampleRowAndCell.getSampleInfo());
+                resultCheck.setCallResult(rowList.get(0));
+                resultCheck.setAssayId(rowList.get(1));
+                resultCheck.setAssayType(rowList.get(1).substring(0,1));
+                resultCheck.setCreateUser(assignee);
+                resultCheck.setCreateTime(new Date());
+                //检测结果取值：SNP取得是call这一栏，CNV需要取gene Hap这一栏
+                if(null != rowList.get(6) && "CNV".equalsIgnoreCase(rowList.get(5).trim())){
+                    resultCheck.setAssayType("CNV");
+                    resultCheck.setCallResult(rowList.get(4));
+                }
+                nyuenResultCheckMapper.insertSelective(resultCheck);
+            }
+        }
+        // （2）批量更新nyuenResultCheck表的rs号 todo 添加事务?
+        nyuenResultCheckMapper.updateSnpInfoV5(sampleRowAndCellList);
+        // （3）校验相同rs号的结果，校验各类型孔位的位点数
+        checkHoleNumAndCallResultV5(sampleRowAndCellList,holeNumErr,callResultErrSamples,callResultErr);
+        if(callResultErr.length()>0) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("sampleNum", callResultErrSamples.toString().substring(1,callResultErrSamples.toString().length()-1));
+            map.put("operation", "上传下机数据" + fileName);
+            map.put("type", 2);
+            map.put("undefined1", callResultErr.toString());
+            map.put("createTime", new Date());
+            map.put("Authorization",request.getHeader("Authorization"));
+            // todo
+//            String result = HttpClientUtil.httpPostJson(operationLogService, JSON.parseObject(JSONObject.toJSONString(map)));
+//            JSONObject jsonObject = JSON.parseObject(result);
+//            if(null != jsonObject.get("code") && !"200".equals(jsonObject.get("code").toString())){
+//                return ResultFactory.buildFailResult(jsonObject.get("message").toString());
+//            }
+//            if(null != jsonObject.get("status") && "500".equals(jsonObject.get("status").toString())){
+//                return ResultFactory.buildFailResult(jsonObject.get("message").toString());
+//            }
+        }
+        experimentalDataRowList.stream().filter(experimentalDataRow -> "CNV".equals(experimentalDataRow.getMethodology()) && !"rs16947".equals(experimentalDataRow.getAssayId()))
+                .collect(Collectors.toList())
+                .stream().map(experimentalDataRow -> {
+            cnvErr.add(experimentalDataRow.getSampleNum());
+            return cnvErr;
+        }).collect(Collectors.toList());
+
+        experimentalDataRowList.stream().filter(experimentalDataRow -> (!experimentalDataRow.getAssayId().startsWith("H") && descriptionArray.indexOf(experimentalDataRow.getDescription()) >= 0))
+                .collect(Collectors.toList())
+                .stream().map(experimentalDataRow -> {
+            descriptionErr.add(experimentalDataRow.getSampleNum());
+            return descriptionErr;
+        }).collect(Collectors.toList());
+
+        String result = (cnvErr.size()>0? cnvErr.stream().distinct().collect(Collectors.toList()).toString()+"以上样本存在CNV位点不是rs16947 。" : "")
+                +(descriptionErr.size()>0?descriptionErr.stream().distinct().collect(Collectors.toList()).toString()+"以上样本存在description是D.LOW Probability 。" : "")
+                +(holeNumErr.length()>0? holeNumErr.toString():"")
+                +(callResultErr.length()>0?callResultErr.toString():"");
+        if(StringUtils.isEmpty(result)){
+            return ResultFactory.buildResult(200,"",null);
+        }
+        return ResultFactory.buildResult(200,result,null);
+    }
+
+    private void checkHoleNumAndCallResultV5(List<SampleRowAndCell> sampleRowAndCellList, StringBuilder holeNumErr,
+                                             Set<String> callResultErrSamples,StringBuilder callResultErr ){
+        List<NyuenResultCheck> nyuenResultCheckList = nyuenResultCheckMapper.getSnpInfoBySampleNums(sampleRowAndCellList);
+        Map<String,List<NyuenResultCheck>> groupMap = new HashMap<>();
+        //将结果集按样本编号分组
+        for(NyuenResultCheck resultCheck : nyuenResultCheckList){
+            List<NyuenResultCheck> groupList = groupMap.get(resultCheck.getSampleInfo());
+            if(null == groupList){
+                List<NyuenResultCheck> valueList = new ArrayList<>();
+                valueList.add(resultCheck);
+                groupMap.put(resultCheck.getSampleInfo(),valueList);
+            }else{
+                groupList.add(resultCheck);
+                groupMap.put(resultCheck.getSampleInfo(),groupList);
+            }
+        }
+        // todo
+        List<String> allSnpIdList = nyuenIdVMapper.getAllSnpId();
+        for(Map.Entry entry : groupMap.entrySet()) {
+            StringBuilder sampleHoleNumErr = new StringBuilder();
+            List<NyuenResultCheck> groupResultCheckList = (List<NyuenResultCheck>) entry.getValue();
+            List<String> sampleAssayIdList = groupResultCheckList.stream().map(NyuenResultCheck::getAssayId).collect(Collectors.toList());
+            // 有位点重复
+            List<String> dumpSnpList = ListUtil.getDump(sampleAssayIdList);
+            if(dumpSnpList.size() > 0){
+                sampleHoleNumErr.append("位点为").append(dumpSnpList).append("有重复。");
+                break; // todo
+            }
+            // 有位点缺失、多余
+            List<String> difList = ListUtil.getDif(allSnpIdList,sampleAssayIdList);
+            if(difList.size() > 0){
+                sampleHoleNumErr.append("位点为").append(difList).append("缺失或多余。");
+            }
+            if(StringUtil.isNotEmpty(sampleHoleNumErr.toString())) {
+                sampleHoleNumErr.insert(0, "样本" + entry.getKey().toString());
+                holeNumErr.append(sampleHoleNumErr);
+            }
+        }
+
+        List<NyuenResultCheck> errorList = nyuenResultCheckMapper.getCallResultErrorBySampleNums(sampleRowAndCellList);
+        if(null != errorList && errorList.size()>0){
+            for(NyuenResultCheck resultCheck : errorList){
+                String[] callResults = resultCheck.getCallResult().split(",");
+                LinkedHashSet unDumpCall = new LinkedHashSet(Arrays.asList(callResults));
+                if(unDumpCall.size()>1) {
+                    callResultErrSamples.add(resultCheck.getSampleInfo());
+                    callResultErr.append("样本 ").append(resultCheck.getSampleInfo()).append(" AssayId为 ").append(resultCheck.getAssayId())
+                            .append(" 存在多种检测结果： ").append(resultCheck.getCallResult()).append(" 。");
+                }
+            }
+        }
+
     }
 
     private Result dealTaskNodeByExcel(List<SampleRowAndCell> sampleRowAndCellList, String assignee, String procDefId, String nodeName){
@@ -681,6 +831,21 @@ public class ProcessController {
             System.out.println(o);
         }
 
+        List<String> l1 = Arrays.asList("A01","A02","A06","A07","A08");
+        List<String> l2 = Arrays.asList("A01","A02","A08","A06");
+        List<String> l3 = Arrays.asList("A02","A07","A07","A08");
+        List<String> l4 = Arrays.asList("A02","A07","A08","A08");
+//        System.out.println(l1.containsAll(l2));
+//        System.out.println(l3.containsAll(l4));
+//        System.out.println(l4.containsAll(l3));
+//        System.out.println("================");
+//        System.out.println(CollectionUtils.isEqualCollection(l1,l2));
+//        System.out.println(CollectionUtils.isEqualCollection(l3,l4));
+        System.out.println(ListUtil.getNoDumpListDif(l1,l2));
+        System.out.println(ListUtil.getDif1(l1,l2));
+        System.out.println(ListUtil.getDif(l1,l2));
+        System.out.println(ListUtil.getDump(l3));
+        System.out.println(ListUtil.getDump(l4));
     }
 
 
