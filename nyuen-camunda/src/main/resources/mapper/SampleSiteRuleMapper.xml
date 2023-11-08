@@ -214,4 +214,10 @@
       </foreach>
   </select>
 
+  <select id="getAllCnvProduct" resultType="java.lang.String">
+    select product_name
+    from sample_site_rule
+    where state = 1
+  </select>
+
 </mapper>

@@ -25,4 +25,9 @@ public class SampleSiteRuleServiceImpl implements SampleSiteRuleService {
     public List<SampleSiteRule> getHoleAndAssayByProductName(List<String> productNames) {
         return sampleSiteRuleMapper.getHoleAndAssayByProductName(productNames);
     }
+
+    @Override
+    public List<String> getAllCnvProduct() {
+        return sampleSiteRuleMapper.getAllCnvProduct();
+    }
 }

@@ -15,6 +15,21 @@ import java.util.Map;
 public class ListUtil {
 
     public static boolean isStrInList(String str,String[] strList){
+        if(null == strList || strList.length == 0){
+            return false;
+        }
+        for (String s : strList){
+            if(s.equals(str)){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static boolean isStrInList(String str,List<String> strList){
+        if(null == strList || strList.size() == 0){
+            return false;
+        }
         for (String s : strList){
             if(s.equals(str)){
                 return true;

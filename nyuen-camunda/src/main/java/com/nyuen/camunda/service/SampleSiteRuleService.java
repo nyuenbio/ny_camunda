@@ -14,4 +14,6 @@ import java.util.List;
 public interface SampleSiteRuleService {
 
     List<SampleSiteRule> getHoleAndAssayByProductName(List<String> productNames);
+
+    List<String> getAllCnvProduct();
 }

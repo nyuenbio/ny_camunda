@@ -60,6 +60,6 @@ public interface SampleSiteRuleMapper {
 
     List<SampleSiteRule> getHoleAndAssayByProductName(List<String> productNames);
 
-
+    List<String> getAllCnvProduct();
 
 }
