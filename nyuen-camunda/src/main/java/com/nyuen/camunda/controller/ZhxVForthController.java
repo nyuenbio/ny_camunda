@@ -205,12 +205,11 @@ public class ZhxVForthController {
             LinkedHashSet<String> assayCodesSet = new LinkedHashSet<>();
             boolean cnvAppendFlag = false;
             if(sampleSiteRuleList != null && sampleSiteRuleList.size()>0) {
-                List<SampleSiteRule> resultList = sampleSiteRuleList.stream().map(m -> {
+                List<SampleSiteRule> resultList = sampleSiteRuleList.stream().peek(m -> {
                     List<String> hole = Arrays.asList(m.getHoleCode().split(","));
                     holeCodesSet.addAll(hole);
                     List<String> assay = Arrays.asList(m.getAssayCode().split(","));
                     assayCodesSet.addAll(assay);
-                    return m;
                 }).collect(Collectors.toList());
                 if (StringUtil.isNotEmpty(sampleLabInfo.getRemark()) && sampleLabInfo.getRemark().contains("不做CNV")) {
                     for (SampleSiteRule ssr : sampleSiteRuleList) {
@@ -336,15 +335,13 @@ public class ZhxVForthController {
         LinkedHashSet<String> holeCodes = new LinkedHashSet<>();
         LinkedHashSet<String> assayCodes = new LinkedHashSet<>();
         AtomicInteger cnvState = new AtomicInteger();
-        List<SampleSiteRule> resultList = sampleSiteRuleList.stream().map(m-> {
+        List<SampleSiteRule> resultList = sampleSiteRuleList.stream().peek(m-> {
             List<String> hole = Arrays.asList(m.getHoleCode().split(","));
             holeCodes.addAll(hole);
             List<String> assay = Arrays.asList(m.getAssayCode().split(","));
             assayCodes.addAll(assay);
             cnvState.set(cnvState.intValue() | m.getState());
-            return m;
         }).collect(Collectors.toList());
-
 
         LinkedHashSet<String> holeCodesSet = new LinkedHashSet<>();
 

@@ -310,6 +310,9 @@ public class ProcessController {
             map.put("Authorization",request.getHeader("Authorization"));
             String result = HttpClientUtil.httpPostJson(operationLogService, JSON.parseObject(JSONObject.toJSONString(map)));
             JSONObject jsonObject = JSON.parseObject(result);
+            if(null != jsonObject.get("code") && "401".equals(jsonObject.get("code").toString())){
+                return ResultFactory.buildFailResult(jsonObject.get("msg").toString());
+            }
             if(null != jsonObject.get("code") && !"200".equals(jsonObject.get("code").toString())){
                 return ResultFactory.buildFailResult(jsonObject.get("message").toString());
             }
@@ -553,15 +556,17 @@ public class ProcessController {
             map.put("undefined1", callResultErr.toString());
             map.put("createTime", new Date());
             map.put("Authorization",request.getHeader("Authorization"));
-            // todo
-//            String result = HttpClientUtil.httpPostJson(operationLogService, JSON.parseObject(JSONObject.toJSONString(map)));
-//            JSONObject jsonObject = JSON.parseObject(result);
-//            if(null != jsonObject.get("code") && !"200".equals(jsonObject.get("code").toString())){
-//                return ResultFactory.buildFailResult(jsonObject.get("message").toString());
-//            }
-//            if(null != jsonObject.get("status") && "500".equals(jsonObject.get("status").toString())){
-//                return ResultFactory.buildFailResult(jsonObject.get("message").toString());
-//            }
+            String result = HttpClientUtil.httpPostJson(operationLogService, JSON.parseObject(JSONObject.toJSONString(map)));
+            JSONObject jsonObject = JSON.parseObject(result);
+            if(null != jsonObject.get("code") && "401".equals(jsonObject.get("code").toString())){
+                return ResultFactory.buildFailResult(jsonObject.get("msg").toString());
+            }
+            if(null != jsonObject.get("code") && !"200".equals(jsonObject.get("code").toString())){
+                return ResultFactory.buildFailResult(jsonObject.get("message").toString());
+            }
+            if(null != jsonObject.get("status") && "500".equals(jsonObject.get("status").toString())){
+                return ResultFactory.buildFailResult(jsonObject.get("message").toString());
+            }
         }
         experimentalDataRowList.stream().filter(experimentalDataRow -> "CNV".equals(experimentalDataRow.getMethodology()) && !"rs16947".equals(experimentalDataRow.getAssayId()))
                 .collect(Collectors.toList())
