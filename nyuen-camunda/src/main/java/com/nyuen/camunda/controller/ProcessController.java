@@ -112,8 +112,8 @@ public class ProcessController {
         }
         // 得到相同样本编号归类后的Excel表格数据
         List<SampleRowAndCell> sampleRowAndCellList = (List<SampleRowAndCell>) result1.getData();
-        // 1、校验表格 V4版本规则
-        Result checkResult = experimentDataCheckV5(sampleRowAndCellList, nodeName, assignee, multipartFile.getOriginalFilename(),request);
+        // 1、校验表格 V4-2版本规则
+        Result checkResult = experimentDataCheckV42(sampleRowAndCellList, nodeName, assignee, multipartFile.getOriginalFilename(),request);
         if(StringUtils.isNotEmpty(checkResult.getMessage())){
             return checkResult;
         }
@@ -449,6 +449,50 @@ public class ProcessController {
                 }
             }
         }
+    }
+
+    @ApiOperation(value = "通过上传解析Excel表格，处理流程节点并添加流程变量", httpMethod = "POST")
+    @PostMapping("/batchDealNodeByExcelV")
+    public Result batchDealNodeByExcelV(MultipartFile multipartFile, @ApiParam("当前登录人id") String assignee,
+                                       String procDefId, @ApiParam("节点名称") String nodeName, HttpServletRequest request)
+            throws IOException, InvalidFormatException {
+        if(StringUtils.isEmpty(assignee)){
+            return ResultFactory.buildFailResult("当前用户不能为空");
+        }
+        if(StringUtils.isEmpty(nodeName)){
+            return ResultFactory.buildFailResult("节点名称不能为空");
+        }
+        if(StringUtils.isEmpty(procDefId)){
+            return ResultFactory.buildFailResult("流程不能为空");
+        }
+        // 上传抽提数据,或上传下机数据
+        Result result1 = ExcelUtil.dealDataByExcel(multipartFile);
+        if(200 != result1.getCode()){
+            return result1;
+        }
+        // 得到相同样本编号归类后的Excel表格数据
+        List<SampleRowAndCell> sampleRowAndCellList = (List<SampleRowAndCell>) result1.getData();
+        // 1、校验表格 V5版本规则
+        Result checkResult = experimentDataCheckV5(sampleRowAndCellList, nodeName, assignee, multipartFile.getOriginalFilename(),request);
+        if(StringUtils.isNotEmpty(checkResult.getMessage())){
+            return checkResult;
+        }
+        // 2、存储Excel数据文件
+        //if(StringUtils.equalsIgnoreCase(nodeName.trim(),"下机")) {
+        String fileReadPath = FileUtil.uploadFile(multipartFile, saveRootPath, readRootPath);
+        ExperimentData experimentData = new ExperimentData();
+        experimentData.setProcDefId(procDefId);
+        experimentData.setNodeName(nodeName);
+        experimentData.setFileName(multipartFile.getOriginalFilename());
+        experimentData.setUrl(fileReadPath);
+        experimentData.setCreateUser(assignee);
+        experimentData.setCreateTime(new Date());
+        experimentData.setStatus(0+"");
+        experimentDataService.addExperimentData(experimentData);
+        //}
+        // 3、处理流程节点
+        return dealTaskNodeByExcel(sampleRowAndCellList,assignee,procDefId,nodeName);
+        //return ResultFactory.buildSuccessResult("");
     }
 
     private Result experimentDataCheckV5(List<SampleRowAndCell> sampleRowAndCellList,String nodeName,String assignee, String fileName,HttpServletRequest request) {

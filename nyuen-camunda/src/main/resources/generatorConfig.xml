@@ -140,8 +140,6 @@
                enableSelectByExample="false" enableUpdateByExample="false" selectByExampleQueryId="false">
         </table>
 
-
-
         <table tableName="reference" domainObjectName="Reference" enableCountByExample="false" enableDeleteByExample="false"
                enableSelectByExample="false" enableUpdateByExample="false" selectByExampleQueryId="false">
         </table>
@@ -173,13 +171,16 @@
         <table tableName="sample_lab_info" domainObjectName="SampleLabInfo" enableCountByExample="false" enableDeleteByExample="false"
                enableSelectByExample="false" enableUpdateByExample="false" selectByExampleQueryId="false">
         </table>
-        -->
 
         <table tableName="cnv_drug" domainObjectName="CnvDrug" enableCountByExample="false" enableDeleteByExample="false"
                enableSelectByExample="false" enableUpdateByExample="false" selectByExampleQueryId="false">
         </table>
 
         <table tableName="nyuen_id_v" domainObjectName="NyuenIdV" enableCountByExample="false" enableDeleteByExample="false"
+               enableSelectByExample="false" enableUpdateByExample="false" selectByExampleQueryId="false">
+        </table>
+    -->
+        <table tableName="sample_site_rule_v" domainObjectName="SampleSiteRuleV" enableCountByExample="false" enableDeleteByExample="false"
                enableSelectByExample="false" enableUpdateByExample="false" selectByExampleQueryId="false">
         </table>
 

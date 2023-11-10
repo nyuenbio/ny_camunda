@@ -2,9 +2,11 @@ package com.nyuen.camunda.controller;
 
 import com.nyuen.camunda.domain.po.SampleLabInfo;
 import com.nyuen.camunda.domain.po.SampleSiteRule;
+import com.nyuen.camunda.domain.po.SampleSiteRuleV;
 import com.nyuen.camunda.domain.vo.BatchStartProcessBean;
 import com.nyuen.camunda.domain.vo.SampleReceiveBean;
 import com.nyuen.camunda.mapper.CnvDrugMapper;
+import com.nyuen.camunda.mapper.SampleSiteRuleVMapper;
 import com.nyuen.camunda.result.Result;
 import com.nyuen.camunda.result.ResultFactory;
 import com.nyuen.camunda.service.SampleLabInfoService;
@@ -47,6 +49,8 @@ public class ZhxVController {
     private SampleLabInfoService sampleLabInfoService;
     @Resource
     private CnvDrugMapper cnvDrugMapper;
+    @Resource
+    private SampleSiteRuleVMapper sampleSiteRuleVMapper;
 
 
     @ApiOperation(value = "批量开启流程V5",httpMethod = "POST")
@@ -57,21 +61,19 @@ public class ZhxVController {
         for(SampleReceiveBean srBean : batchStartProcessBean.getSampleReceiveList()) {
             identityService.setAuthenticatedUserId(initiator);
             // 如果是臻慧选产品或贝安臻抗癫痫用药，处理套餐与孔位规则
-            // todo
-            //  区分自选药和其他套餐是否做cnv判断
             if(236 == srBean.getProductType() || 243 == srBean.getProductType() ) {
                 Map<String, Object> variables = new HashMap<>();
-                List<SampleSiteRule> sampleSiteRuleList = sampleSiteRuleService.getHoleAndAssayByProductName(Arrays.asList(srBean.getProductName().split(",")));
+                List<SampleSiteRuleV> sampleSiteRuleList = sampleSiteRuleVMapper.getVHoleByProductName(Arrays.asList(srBean.getProductName().split(",")));
                 if(sampleSiteRuleList != null && sampleSiteRuleList.size()>0) {
                     LinkedHashSet<String> holeCodesSet = new LinkedHashSet<>();
                     LinkedHashSet<String> assayCodesSet = new LinkedHashSet<>();
-                    AtomicInteger cnvState = new AtomicInteger();
-                    List<SampleSiteRule> resultList = sampleSiteRuleList.stream().peek(m -> {
+                    //  区分自选药和其他套餐是否做cnv判断
+                    boolean isCnv = isCnv(srBean);
+                    List<SampleSiteRuleV> resultList = sampleSiteRuleList.stream().peek(m -> {
                         List<String> hole = Arrays.asList(m.getHoleCode().split(","));
                         holeCodesSet.addAll(hole);
                         List<String> assay = Arrays.asList(m.getAssayCode().split(","));
                         assayCodesSet.addAll(assay);
-                        cnvState.set(cnvState.intValue() | m.getState());
                     }).collect(Collectors.toList());//[A,B,C]
                     String holeCodes = holeCodesSet.toString().substring(1, holeCodesSet.toString().length() - 1);
                     String assayCodes = assayCodesSet.toString().substring(1, assayCodesSet.toString().length() - 1);
@@ -97,7 +99,7 @@ public class ZhxVController {
                     sampleLabInfo.setHoleCode(holeCodes);
                     sampleLabInfo.setAssayCode(assayCodes);
                     sampleLabInfo.setCreateTime(new Date());
-                    sampleLabInfo.setRemark(cnvState.intValue() == 0 ? "不做CNV":"");
+                    sampleLabInfo.setRemark(isCnv ? "":"不做CNV");
                     //sampleLabInfo.setHlaRemark(hlaFlag?"是":null);
                     sampleLabInfoService.addSampleLanInfo(sampleLabInfo);
                 }else{
@@ -123,22 +125,20 @@ public class ZhxVController {
             if(sampleLabInfo.getProductName().equals(srBean.getProductName())){
                 break;
             }
-            List<SampleSiteRule> sampleSiteRuleList = sampleSiteRuleService.getHoleAndAssayByProductName(Arrays.asList(srBean.getProductName().split(",")));
+            List<SampleSiteRuleV> sampleSiteRuleList = sampleSiteRuleVMapper.getVHoleByProductName(Arrays.asList(srBean.getProductName().split(",")));
             LinkedHashSet<String> holeCodesSet = new LinkedHashSet<>();
             if(sampleSiteRuleList != null && sampleSiteRuleList.size()>0) {
-                List<SampleSiteRule> resultList = sampleSiteRuleList.stream().peek(m -> {
+                List<SampleSiteRuleV> resultList = sampleSiteRuleList.stream().peek(m -> {
                     List<String> hole = Arrays.asList(m.getHoleCode().split(","));
                     holeCodesSet.addAll(hole);
                 }).collect(Collectors.toList());
 
-                // todo
                 //  区分自选药和其他套餐是否做cnv判断
                 if (StringUtil.isNotEmpty(sampleLabInfo.getRemark()) && sampleLabInfo.getRemark().contains("不做CNV")) {
-                    for (SampleSiteRule ssr : sampleSiteRuleList) {
-                        if (1 == ssr.getState()) {
-                            result.append("样本").append(sampleLabInfo.getSampleInfo()).append("追加做CNV。");
-                            break;
-                        }
+                    boolean isCnv = isCnv(srBean);
+                    if (isCnv) {
+                        result.append("样本").append(sampleLabInfo.getSampleInfo()).append("追加做CNV。");
+                        break;
                     }
                 }
             }
@@ -166,28 +166,22 @@ public class ZhxVController {
             if(sampleLabInfo.getProductName().equals(srBean.getProductName())){
                 break;
             }
-            List<SampleSiteRule> sampleSiteRuleList = sampleSiteRuleService.getHoleAndAssayByProductName(Arrays.asList(srBean.getProductName().split(",")));
+            List<SampleSiteRuleV> sampleSiteRuleList = sampleSiteRuleVMapper.getVHoleByProductName(Arrays.asList(srBean.getProductName().split(",")));
             LinkedHashSet<String> holeCodesSet = new LinkedHashSet<>();
             LinkedHashSet<String> assayCodesSet = new LinkedHashSet<>();
             boolean cnvAppendFlag = false;
             if(sampleSiteRuleList != null && sampleSiteRuleList.size()>0) {
-                List<SampleSiteRule> resultList = sampleSiteRuleList.stream().peek(m -> {
+                List<SampleSiteRuleV> resultList = sampleSiteRuleList.stream().peek(m -> {
                     List<String> hole = Arrays.asList(m.getHoleCode().split(","));
                     holeCodesSet.addAll(hole);
                     List<String> assay = Arrays.asList(m.getAssayCode().split(","));
                     assayCodesSet.addAll(assay);
                 }).collect(Collectors.toList());
                 if (StringUtil.isNotEmpty(sampleLabInfo.getRemark()) && sampleLabInfo.getRemark().contains("不做CNV")) {
-                    for (SampleSiteRule ssr : sampleSiteRuleList) {
-                        if (1 == ssr.getState()) {
-                            cnvAppendFlag = true;
-                            break;
-                        }
-                    }
+                    //  区分自选药和其他套餐是否做cnv判断
+                    cnvAppendFlag = isCnv(srBean);
                 }
             }
-            // todo
-            //  区分自选药和其他套餐是否做cnv判断
             String holeCodes = holeCodesSet.toString().substring(1, holeCodesSet.toString().length() - 1);
             String assayCodes = assayCodesSet.toString().substring(1, assayCodesSet.toString().length() - 1);
             if(cnvAppendFlag || !sampleLabInfo.getHoleCode().equals(holeCodes)){
@@ -231,17 +225,16 @@ public class ZhxVController {
             //  区分自选药和其他套餐是否做cnv判断
             if (236 == srBean.getProductType() || 243 == srBean.getProductType()) {
                 Map<String, Object> variables = new HashMap<>();
-                List<SampleSiteRule> sampleSiteRuleList = sampleSiteRuleService.getHoleAndAssayByProductName(Arrays.asList(srBean.getProductName().split(",")));
+                List<SampleSiteRuleV> sampleSiteRuleList = sampleSiteRuleVMapper.getVHoleByProductName(Arrays.asList(srBean.getProductName().split(",")));
                 if (sampleSiteRuleList != null && sampleSiteRuleList.size() > 0) {
                     LinkedHashSet<String> holeCodesSet = new LinkedHashSet<>();
                     LinkedHashSet<String> assayCodesSet = new LinkedHashSet<>();
-                    AtomicInteger cnvState = new AtomicInteger();
-                    List<SampleSiteRule> tempList = sampleSiteRuleList.stream().peek(m -> {
+                    boolean isCnv = isCnv(srBean);
+                    List<SampleSiteRuleV> tempList = sampleSiteRuleList.stream().peek(m -> {
                         List<String> hole = Arrays.asList(m.getHoleCode().split(","));
                         holeCodesSet.addAll(hole);
                         List<String> assay = Arrays.asList(m.getAssayCode().split(","));
                         assayCodesSet.addAll(assay);
-                        cnvState.set(cnvState.intValue() | m.getState());
                     }).collect(Collectors.toList());//[A,B,C]
                     String holeCodes = holeCodesSet.toString().substring(1, holeCodesSet.toString().length() - 1);
                     String assayCodes = assayCodesSet.toString().substring(1, assayCodesSet.toString().length() - 1);
@@ -250,7 +243,7 @@ public class ZhxVController {
                     variables.put("productName", srBean.getProductName());
                     variables.put("holeCodes", holeCodes);
                     variables.put("assayCodes", assayCodes);
-                    variables.put("cnvState",cnvState.intValue() == 0 ? 0:1);//0：不做CNV
+                    variables.put("cnvState",isCnv ? 1:0);//0：不做CNV
                     //boolean hlaFlag = isHla(srBean);
                     //variables.put("hla", hlaFlag?"是":"");
                     resultList.add(variables);
