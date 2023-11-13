@@ -1,7 +1,6 @@
 package com.nyuen.camunda.controller;
 
 import com.nyuen.camunda.domain.po.SampleLabInfo;
-import com.nyuen.camunda.domain.po.SampleSiteRule;
 import com.nyuen.camunda.domain.po.SampleSiteRuleV;
 import com.nyuen.camunda.domain.vo.BatchStartProcessBean;
 import com.nyuen.camunda.domain.vo.SampleReceiveBean;
@@ -25,7 +24,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.Resource;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
@@ -67,8 +65,7 @@ public class ZhxVController {
                 if(sampleSiteRuleList != null && sampleSiteRuleList.size()>0) {
                     LinkedHashSet<String> holeCodesSet = new LinkedHashSet<>();
                     LinkedHashSet<String> assayCodesSet = new LinkedHashSet<>();
-                    //  区分自选药和其他套餐是否做cnv判断
-                    boolean isCnv = isCnv(srBean);
+                    boolean isCnv = isCnv(srBean); //  区分自选药和其他套餐是否做cnv判断
                     List<SampleSiteRuleV> resultList = sampleSiteRuleList.stream().peek(m -> {
                         List<String> hole = Arrays.asList(m.getHoleCode().split(","));
                         holeCodesSet.addAll(hole);
@@ -221,15 +218,13 @@ public class ZhxVController {
         List<Map<String, Object>> resultList = new ArrayList<>();
         for(SampleReceiveBean srBean : sampleReceiveBeanList) {
             // 如果是臻慧选产品或贝安臻抗癫痫用药，处理套餐与孔位规则
-            // todo
-            //  区分自选药和其他套餐是否做cnv判断
             if (236 == srBean.getProductType() || 243 == srBean.getProductType()) {
                 Map<String, Object> variables = new HashMap<>();
                 List<SampleSiteRuleV> sampleSiteRuleList = sampleSiteRuleVMapper.getVHoleByProductName(Arrays.asList(srBean.getProductName().split(",")));
                 if (sampleSiteRuleList != null && sampleSiteRuleList.size() > 0) {
                     LinkedHashSet<String> holeCodesSet = new LinkedHashSet<>();
                     LinkedHashSet<String> assayCodesSet = new LinkedHashSet<>();
-                    boolean isCnv = isCnv(srBean);
+                    boolean isCnv = isCnv(srBean); //  区分自选药和其他套餐是否做cnv判断
                     List<SampleSiteRuleV> tempList = sampleSiteRuleList.stream().peek(m -> {
                         List<String> hole = Arrays.asList(m.getHoleCode().split(","));
                         holeCodesSet.addAll(hole);
@@ -280,35 +275,11 @@ public class ZhxVController {
     public static void main(String[] args) {
         SampleReceiveBean srBean = new SampleReceiveBean();
         srBean.setProductType(236);
-        srBean.setProductName("抗精神病药,抗抑郁药,心境稳定剂,抗凝血药和抗血小板药/抗痛风药,抗高血压药,降糖药和抗糖尿病药");
+        srBean.setProductName("抗精神病药,抗抑郁药,心境稳定剂,抗凝血药和抗血小板药/抗痛风药,抗高血压药,降糖药和抗糖尿病药," +
+                "烟草使用障碍药物" +
+                "镇痛药物" +
+                "质子泵抑制药物");
 
-        List<SampleSiteRule> sampleSiteRuleList = new ArrayList<>();
-        SampleSiteRule ssRule1 = new SampleSiteRule(4,"A,B,C,D","XJ1-30,XJ31-50,YY1-30,YY31-56",0);
-        SampleSiteRule ssRule2 = new SampleSiteRule(4,"A,B,C,D","XJ1-30,XJ31-50,YY1-30,YY31-56",1);
-        SampleSiteRule ssRule3 = new SampleSiteRule(2,"A,B","XJ1-30,XJ31-50",0);
-        SampleSiteRule ssRule4 = new SampleSiteRule(1,"G","XS1-25",0);
-        SampleSiteRule ssRule5 = new SampleSiteRule(1,"E","G1-31",1);
-        SampleSiteRule ssRule6 = new SampleSiteRule(1,"F","TN1-25",0);
-        sampleSiteRuleList.add(ssRule1);
-        sampleSiteRuleList.add(ssRule2);
-        sampleSiteRuleList.add(ssRule3);
-        sampleSiteRuleList.add(ssRule4);
-        sampleSiteRuleList.add(ssRule5);
-        sampleSiteRuleList.add(ssRule6);
-        LinkedHashSet<String> holeCodes = new LinkedHashSet<>();
-        LinkedHashSet<String> assayCodes = new LinkedHashSet<>();
-        AtomicInteger cnvState = new AtomicInteger();
-        List<SampleSiteRule> resultList = sampleSiteRuleList.stream().peek(m-> {
-            List<String> hole = Arrays.asList(m.getHoleCode().split(","));
-            holeCodes.addAll(hole);
-            List<String> assay = Arrays.asList(m.getAssayCode().split(","));
-            assayCodes.addAll(assay);
-            cnvState.set(cnvState.intValue() | m.getState());
-        }).collect(Collectors.toList());
-
-
-        System.out.println(holeCodes.toString()+" <==> "+assayCodes.toString());
-        System.out.println(resultList.size());
     }
 
 }
