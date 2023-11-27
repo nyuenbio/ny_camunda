@@ -454,7 +454,7 @@ public class ProcessController {
         }
     }
 
-    @ApiOperation(value = "通过上传解析Excel表格，处理流程节点并添加流程变量", httpMethod = "POST")
+    @ApiOperation(value = "通过上传解析Excel表格，处理流程节点并添加流程变量V5", httpMethod = "POST")
     @PostMapping("/batchDealNodeByExcelV")
     public Result batchDealNodeByExcelV(MultipartFile multipartFile, @ApiParam("当前登录人id") String assignee,
                                        String procDefId, @ApiParam("节点名称") String nodeName, HttpServletRequest request)
@@ -502,7 +502,7 @@ public class ProcessController {
         if (!StringUtils.equalsIgnoreCase(nodeName.trim(), "下机")) {
             return ResultFactory.buildResult(200, "", null);
         }
-        List<String> descriptionArray = Collections.singletonList("D.LOW Probability");
+        List<String> descriptionArray = Arrays.asList("D.LOW Probability","N.No-Alleles");
         // v5校验规则
         // 1.Methodology-CNV的位点，固定是rs16947(可能会因为下拉导致错误)
         // 2.非Hxx编号的位点，Description这一列评级不能出现D.LOW Probability
@@ -583,7 +583,7 @@ public class ProcessController {
         }).collect(Collectors.toList());
 
         String result = (cnvErr.size()>0? cnvErr.stream().distinct().collect(Collectors.toList()).toString()+"以上样本存在CNV位点不是rs16947 。" : "")
-                +(descriptionErr.size()>0?descriptionErr.stream().distinct().collect(Collectors.toList()).toString()+"以上样本存在description是D.LOW Probability 。" : "")
+                +(descriptionErr.size()>0?descriptionErr.stream().distinct().collect(Collectors.toList()).toString()+"以上样本存在description是D.LOW Probability或N.No-Alleles 。" : "")
                 +(holeNumErr.length()>0? holeNumErr.toString():"")
                 +(callResultErr.length()>0?callResultErr.toString():"");
         if(StringUtils.isEmpty(result)){
